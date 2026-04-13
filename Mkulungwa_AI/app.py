@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 import os
-import requests
 import numpy as np
-from scipy.stats import poisson
+import requests
 
-# 1. MPANGILIO MKUU WA APP
-st.set_page_config(page_title="MKULUNGWA AI: THE PREDATOR V12", layout="wide")
+# 1. MPANGILIO MKUU (Design Safi)
+st.set_page_config(page_title="PREDATOR V12.1", layout="wide")
 
-# Orodha ya Ligi (Zote ulizozitaka)
 DATA_URLS = {
     "England (Premier League)": "https://www.football-data.co.uk/mmz4281/2526/E0.csv",
     "Spain (La Liga)": "https://www.football-data.co.uk/mmz4281/2526/SP1.csv",
@@ -20,128 +18,91 @@ DATA_URLS = {
     "Portugal (Primeira Liga)": "https://www.football-data.co.uk/mmz4281/2526/P1.csv",
     "Turkey (Super Lig)": "https://www.football-data.co.uk/mmz4281/2526/T1.csv",
     "Scotland (Premiership)": "https://www.football-data.co.uk/mmz4281/2526/SC0.csv",
-    "Saudi Arabia (Pro League)": "SAUDI_DATA",
-    "South Africa (PSL)": "RSA_DATA",
-    "Egypt (Premier League)": "EGYPT_DATA",
     "UEFA Champions/Europa/Conf": "GLOBAL_EUROPE"
 }
 
-# --- SIDEBAR: NEURAL SYNC ---
-st.sidebar.markdown("### 🧠 SUPREME SYNC V12.0")
-if st.sidebar.button("🔄 REFRESH ALL NEURAL DATA"):
-    with st.sidebar:
-        bar = st.progress(0)
-        for i, (name, url) in enumerate(DATA_URLS.items()):
+# --- SIDEBAR & SYNC ---
+with st.sidebar:
+    st.header("🧠 PREDATOR CORE")
+    if st.button("🔄 UPDATE DATABASE"):
+        for name, url in DATA_URLS.items():
             if url.startswith("http"):
                 try:
-                    r = requests.get(url, timeout=10)
-                    if r.status_code == 200:
-                        with open(url.split('/')[-1], 'wb') as f:
-                            f.write(r.content)
+                    r = requests.get(url, timeout=5)
+                    with open(url.split('/')[-1], 'wb') as f: f.write(r.content)
                 except: pass
-            bar.progress((i + 1) / len(DATA_URLS))
-        st.success("BARAZA LA AKILI LIMESHIBISHWA DATA!")
+        st.success("DATA UPDATED!")
 
 # --- UI HEADER ---
-st.markdown("<h1 style='text-align: center; color: #00FF00;'>🛡️ MKULUNGWA AI: THE ULTIMATE PREDATOR V12 🛡️</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #888;'>IQ: Poisson | Monte Carlo | Volatility | Momentum | Sniper | Fair Odds Trap</p>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #00FF00;'>🛡️ PREDATOR V12.1: SLIM ENGINE</h2>", unsafe_allow_html=True)
 
-nchi = st.selectbox("🌍 CHAGUA MASHINDANO", list(DATA_URLS.keys()))
+nchi = st.selectbox("🌍 LIGI", list(DATA_URLS.keys()))
 
 # --- DATA LOADING ---
-teams = []
 df_final = pd.DataFrame()
-
 if nchi == "UEFA Champions/Europa/Conf":
-    league_files = ["E0.csv", "SP1.csv", "D1.csv", "I1.csv", "F1.csv"]
-    all_data = [pd.read_csv(f) for f in league_files if os.path.exists(f)]
-    if all_data:
-        df_final = pd.concat(all_data, ignore_index=True)
-        teams = sorted(df_final['HomeTeam'].unique())
+    files = ["E0.csv", "SP1.csv", "D1.csv", "I1.csv", "F1.csv"]
+    all_d = [pd.read_csv(f) for f in files if os.path.exists(f)]
+    if all_d: df_final = pd.concat(all_d)
 else:
-    f_name = DATA_URLS[nchi].split('/')[-1]
-    if os.path.exists(f_name):
-        df_final = pd.read_csv(f_name)
-        teams = sorted(df_final['HomeTeam'].unique())
+    fname = DATA_URLS[nchi].split('/')[-1]
+    if os.path.exists(fname): df_final = pd.read_csv(fname)
 
-# --- THE PREDATOR ENGINE ---
-if teams:
+if not df_final.empty:
+    teams = sorted(df_final['HomeTeam'].unique())
     c1, c2 = st.columns(2)
-    with c1: h_t = st.selectbox("🏠 HOME TEAM", teams)
-    with c2: a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+    h_t = c1.selectbox("🏠 HOME", teams)
+    a_t = c2.selectbox("🚀 AWAY", [t for t in teams if t != h_t])
     
+    # Odds za Hiari
     st.markdown("---")
-    st.markdown("##### 💹 ODDS ANALYZER (Linganisha na Makampuni yako)")
-    o_col1, o_col2 = st.columns(2)
-    bookie_h = o_col1.number_input(f"Odds za {h_t} (Mfano: Betpawa/Sportpesa)", value=2.00, step=0.01)
-    bookie_a = o_col2.number_input(f"Odds za {a_t}", value=2.00, step=0.01)
+    b_h = st.number_input(f"Odds za {h_t} (Weka 0 kama huna)", value=0.00)
 
-    if st.button("RUN DEEP ANALYTIC SIMULATION"):
+    if st.button("EXECUTE ANALYSIS"):
         try:
-            # --- IQ 1: TAKWIMU (POISSON BASELINE) ---
-            l_avg_h, l_avg_a = df_final['FTHG'].mean(), df_final['FTAG'].mean()
-            h_perf = df_final[df_final['HomeTeam'] == h_t].tail(10)
-            a_perf = df_final[df_final['AwayTeam'] == a_t].tail(10)
+            # Leta Takwimu
+            l_h, l_a = df_final['FTHG'].mean(), df_final['FTAG'].mean()
+            h_p = df_final[df_final['HomeTeam'] == h_t].tail(8)
+            a_p = df_final[df_final['AwayTeam'] == a_t].tail(8)
             
-            xg_h = (h_perf['FTHG'].mean() / l_avg_h) * (a_perf['FTHG'].mean() / l_avg_h) * l_avg_h
-            xg_a = (a_perf['FTAG'].mean() / l_avg_a) * (h_perf['FTAG'].mean() / l_avg_a) * l_avg_a
-
-            # --- IQ 2: UIGAJI (MONTE CARLO - 10,000 ROUNDS) ---
-            sim_h = np.random.poisson(xg_h, 10000)
-            sim_a = np.random.poisson(xg_a, 10000)
-            p_h = (np.sum(sim_h > sim_a) / 10000) * 100
-            p_a = (np.sum(sim_a > sim_h) / 10000) * 100
-            p_d = (np.sum(sim_h == sim_a) / 10000) * 100
-            p_o15 = (np.sum((sim_h + sim_a) >= 2) / 10000) * 100
-
-            # --- IQ 3: USALAMA (VOLATILITY IQ) ---
-            v_index = np.std(sim_h) + np.std(sim_a)
-            risk = "LOW" if v_index < 1.6 else "MEDIUM" if v_index < 2.3 else "HIGH"
+            # Poisson & Simulation
+            xh = (h_p['FTHG'].mean() / l_h) * (a_p['FTHG'].mean() / l_h) * l_h
+            xa = (a_p['FTAG'].mean() / l_a) * (h_p['FTAG'].mean() / l_a) * l_a
+            sh = np.random.poisson(xh, 10000)
+            sa = np.random.poisson(xa, 10000)
             
-            # --- IQ 4: HALI YA HEWA (MOMENTUM SCAN) ---
-            h_recent = h_perf['FTR'].tolist()
-            momentum = (h_recent.count('H') / len(h_recent)) * 100 if h_recent else 50
+            ph = (np.sum(sh > sa) / 10000) * 100
+            pa = (np.sum(sa > sh) / 10000) * 100
+            po15 = (np.sum((sh + sa) >= 2) / 10000) * 100
+            fair_h = 100 / ph if ph > 0 else 0
             
-            # --- IQ 5: FAIR ODDS TRAP RADAR ---
-            fair_h = 100 / p_h if p_h > 0 else 100
-            fair_a = 100 / p_a if p_a > 0 else 100
-            is_trap = True if bookie_h > (fair_h + 1.2) else False
-
-            # --- DISPLAY SIGNALS ---
-            st.markdown(f"### 🎯 RESULTS: {h_t} vs {a_t}")
+            # Volatility (Risk)
+            vix = np.std(sh) + np.std(sa)
+            risk_lbl = "LOW" if vix < 1.6 else "HIGH"
             
-            if is_trap:
-                st.markdown("<div style='background-color:red; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold;'>⚠️ BOOKIE TRAP DETECTED: Odds zimepangwa kwa hila!</div>", unsafe_allow_html=True)
-            elif risk == "LOW" and (p_h > 75 or p_a > 75):
-                st.markdown("<div style='background-color:#00FF00; color:black; padding:15px; border-radius:10px; text-align:center; font-weight:bold;'>🎯 SNIPER LOGIC: HIGH CONFIDENCE SELECTION</div>", unsafe_allow_html=True)
-
-            # Dashboard za Matokeo
-            cols = st.columns(4)
-            top_t, top_p = (h_t, p_h * 1.52) if p_h > p_a else (a_t, p_a * 1.52)
+            # --- DISPLAY MATOKEO (SLIM VERSION) ---
+            st.markdown(f"#### 🎯 Verdict: {h_t} vs {a_t}")
             
-            res_data = [("⚽ Over 1.5", min(p_o15+5, 98.9)), (f"💎 {top_t} Win", min(top_p, 98.7)), ("🚩 Kona 8.5", 91.2), ("📊 Momentum", momentum)]
-            for i, (l, v) in enumerate(res_data):
-                clr = "#00FF00" if v > 85 else "#FFD700"
-                cols[i].markdown(f'<div style="border:2px solid {clr}; padding:15px; border-radius:15px; text-align:center; background:#111;">{l}<br><h2 style="color:{clr};">{v:.1f}%</h2></div>', unsafe_allow_html=True)
+            # Row ya kwanza ya matokeo
+            m1, m2, m3 = st.columns(3)
+            m1.metric(f"💎 {h_t}", f"{ph:.1f}%", f"Fair: {fair_h:.2f}")
+            m2.metric(f"💎 {a_t}", f"{pa:.1f}%", f"Fair: {100/pa:.2f}")
+            m3.metric("⚽ Over 1.5", f"{po15:.1f}%")
 
-            # --- IQ 6: UAMUZI (THE FINAL VERDICT) ---
+            # Mtego wa Odds (Trap Radar)
+            if b_h > 0 and b_h > (fair_h + 1.1):
+                st.error(f"⚠️ TRAP ALERT: Odds za kampuni ({b_h}) ni kubwa mno. Kuna kitu kimefichwa!")
+            
+            # Final Summary
             st.markdown("---")
-            st.subheader("🧠 BARAZA LA AKILI (FINAL CONSULTATION)")
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.info(f"**AI Fair Odds:** {h_t} ({fair_h:.2f}) vs {a_t} ({fair_a:.2f})")
-                st.write(f"**Volatility:** {v_index:.2f} ({risk})")
-            
-            with col_b:
-                if is_trap:
-                    st.error("UAMUZI: Kampuni inatoa 'Value' isiyo halisi. Epuka mshindi, cheza UNDER 3.5 au KONA.")
-                elif risk == "HIGH":
-                    st.warning("UAMUZI: Mechi haijatulia (High Risk). Usiweke mzigo mkubwa. Cheza Magoli pekee.")
-                elif p_o15 > 88:
-                    st.success(f"UAMUZI: SNIPER imetambua nafasi kubwa ya Magoli. Soko: Over 1.5/2.5.")
-                else:
-                    st.success(f"UAMUZI: {top_t} ana nafasi kubwa. Soko: Win au Double Chance.")
+            if risk_lbl == "HIGH":
+                st.warning("🛡️ UAMUZI: Mechi ina hatari. Pendekezo: Over 1.5 au Kona.")
+            elif ph > 70 or pa > 70:
+                win_t = h_t if ph > pa else a_t
+                st.success(f"🔥 SNIPER: {win_t} Win / Double Chance. Confidence: HIGH.")
+            else:
+                st.info("📊 UAMUZI: Mechi imebalance. Double Chance ndio salama zaidi.")
 
-        except:
-            st.error("Refresh data kwanza kupata takwimu za ligi hii.")
+        except: st.error("Tafadhali Refresh data kwanza.")
+else:
+    st.warning("Fungua Sidebar kisha bonyeza 'UPDATE DATABASE' kuanza.")
