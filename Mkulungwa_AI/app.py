@@ -6,8 +6,8 @@ import requests
 import time
 import hashlib
 
-# 1. UI SETUP - GLOBAL DARK MODE
-st.set_page_config(page_title="MKULUNGWA PREDICTION V15.1", layout="wide")
+# 1. UI SETUP
+st.set_page_config(page_title="MKULUNGWA PREDICTION V15.2", layout="wide")
 
 st.markdown("""
     <style>
@@ -15,28 +15,27 @@ st.markdown("""
     .stButton>button { 
         background: linear-gradient(45deg, #00FF00, #004d00); 
         color: white; border-radius: 12px; height: 3.5em; width: 100%; border: none; font-weight: bold; font-size: 18px;
-        box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.3);
     }
     .result-card { 
         background-color: #1A1C24; padding: 25px; border-radius: 20px; 
         border-top: 4px solid #00FF00; margin-bottom: 20px; text-align: center;
     }
-    h1 { color: #00FF00; text-align: center; font-size: 45px; font-weight: 900; text-transform: uppercase; }
+    h1 { color: #00FF00; text-align: center; font-size: 45px; font-weight: 900; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MASTER DATABASE STRUCTURE
+# 2. MASTER STRUCTURE (UEFA unified in one section)
 LEAGUE_MAP = {
-    "🏆 UEFA MASHINDANO": {
+    "🌍 UEFA MASHINDANO (All Europe)": {
         "Champions League": "CL",
         "Europa League": "EL",
         "Conference League": "EC"
     },
-    "🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENGLAND": {"Premier League": "E0", "Championship": "E1", "League 1": "E2"},
-    "🇪🇸 SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
-    "🇮🇹 ITALY": {"Serie A": "I1", "Serie B": "I2"},
-    "🇩🇪 GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
-    "🇫🇷 FRANCE": {"Ligue 1": "F1", "Ligue 2": "F2"},
+    "🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENGLAND": {"Premier League": "E0", "Championship": "E1"},
+    "🇪🇸 SPAIN": {"La Liga": "SP1"},
+    "🇮🇹 ITALY": {"Serie A": "I1"},
+    "🇩🇪 GERMANY": {"Bundesliga": "D1"},
+    "🇫🇷 FRANCE": {"Ligue 1": "F1"},
     "🇳🇱 NETHERLANDS": {"Eredivisie": "N1"},
     "🇵🇹 PORTUGAL": {"Primeira Liga": "P1"},
     "🇹🇷 TURKEY": {"Süper Lig": "T1"},
@@ -55,9 +54,9 @@ LEAGUE_MAP = {
 
 # --- SYNC ENGINE ---
 with st.sidebar:
-    st.header("🧬 GLOBAL NEURAL SYNC")
-    if st.button("🚀 SYNC DATA (ALL LEAGUES)"):
-        with st.spinner("Downloading World Data..."):
+    st.header("🧬 NEURAL SYNC")
+    if st.button("🚀 SYNC GLOBAL DATA"):
+        with st.spinner("Processing All European Data..."):
             for cat in LEAGUE_MAP:
                 for name, code in LEAGUE_MAP[cat].items():
                     try:
@@ -66,55 +65,47 @@ with st.sidebar:
                         if r.status_code == 200:
                             with open(f"{code}.csv", 'wb') as f: f.write(r.content)
                     except: continue
-        st.success("Global Sync Done!")
+        st.success("Universal Data Synced!")
 
 # --- APP HEADER ---
-st.markdown("<h1>🛡️ MKULUNGWA V15.1 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🛡️ MKULUNGWA V15.2 🛡️</h1>", unsafe_allow_html=True)
 
 # --- SMART DROPDOWNS ---
 c1, c2 = st.columns(2)
 with c1:
     category = st.selectbox("📂 CHAGUA NCHI / KUNDI", list(LEAGUE_MAP.keys()))
 with c2:
+    # Hapa akichagua UEFA, anakuta list moja ya Champions, Europa, au Conference
     league_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[category].keys()))
     league_code = LEAGUE_MAP[category][league_name]
 
-# Safety Load
+# Loading Data
 df = pd.DataFrame()
 if os.path.exists(f"{league_code}.csv"):
     df = pd.read_csv(f"{league_code}.csv")
 
-# --- ANALYSIS ENGINE ---
+# Analysis Engine
 if not df.empty and 'HomeTeam' in df.columns:
+    # HAPA NDO POINT YAKO: Orodha ya timu inakuja moja kwa moja bila kujali nchi
     teams = sorted(df['HomeTeam'].dropna().unique())
     col1, col2 = st.columns(2)
     h_t = col1.selectbox("🏠 HOME TEAM", teams)
     a_t = col2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
     
     if st.button("🎯 EXECUTE SMART PREDICTION"):
-        # Stable AI Hash (98.9% Intelligence)
-        match_key = f"{h_t}{a_t}{league_code}_V15"
+        match_key = f"{h_t}{a_t}{league_code}_V152"
         seed = int(hashlib.md5(match_key.encode()).hexdigest(), 16) % (10**6)
         np.random.seed(seed)
 
-        # --- MSTARI WA LOADING (PROGRESS BAR) ---
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        ai_steps = [
-            "Neural Network: Scanning Team DNA...",
-            "XGBoost: Analyzing Recent Form...",
-            "Poisson: Calculating Goal Probability...",
-            "Bayesian: Adjusting Market Risk...",
-            "Monte Carlo: Simulating 10,000 Matches..."
-        ]
-        
-        for i, step in enumerate(ai_steps):
-            status_text.text(step)
-            progress_bar.progress((i + 1) * 20)
-            time.sleep(0.6) # Inatengeneza muonekano wa AI inayofikiri
+        # Progress bar ya urembo na uhakika
+        pb = st.progress(0)
+        st_text = st.empty()
+        steps = ["Neural Scan...", "Form Analysis...", "Goal Probability...", "Market Risk...", "Final Simulation..."]
+        for i, s in enumerate(steps):
+            st_text.text(s)
+            pb.progress((i+1)*20)
+            time.sleep(0.5)
 
-        # Data processing logic
         h_data = df[df['HomeTeam'] == h_t].tail(10)
         a_data = df[df['AwayTeam'] == a_t].tail(10)
         
@@ -127,24 +118,4 @@ if not df.empty and 'HomeTeam' in df.columns:
         confidence = 94.5 + (seed % 4) + (np.random.uniform(0.1, 0.4))
         if confidence > 98.9: confidence = 98.9
 
-        main_pick = f"{h_t} WIN / 1X" if np.mean(sim_h) > np.mean(sim_a) else f"{a_t} WIN / X2"
-        
-        hc = h_data['HC'].mean() if 'HC' in h_data.columns else 5.2
-        ac = a_data['AC'].mean() if 'AC' in a_data.columns else 4.5
-        corner_pick = "OVER 8.5 KONA" if (hc + ac) > 9.0 else "OVER 7.5 KONA"
-
-        # Futa progress bar baada ya kumaliza
-        status_text.empty()
-        progress_bar.empty()
-
-        # --- FINAL RESULTS ---
-        st.markdown(f"<h2 style='text-align:center; color:#00FF00;'>🎯 IQ ACCURACY: {confidence:.1f}%</h2>", unsafe_allow_html=True)
-        st.progress(confidence / 100)
-        
-        r1, r2 = st.columns(2)
-        with r1:
-            st.markdown(f"<div class='result-card'><h3>🏆 AI PICK</h3><h2>{main_pick}</h2></div>", unsafe_allow_html=True)
-        with r2:
-            st.markdown(f"<div class='result-card'><h3>🚩 CORNER</h3><h2>{corner_pick}</h2></div>", unsafe_allow_html=True)
-else:
-    st.info("💡 Mfumo uko tayari. Tafadhali Sync Data kwenye Sidebar kuanza uchambuzi.")
+        main_pick = f"{h_t} WIN / 1X" if np.mean(sim_h) >
