@@ -37,22 +37,4 @@ LEAGUE_MAP = {
     "🇪🇸 SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
     "🇮🇹 ITALY": {"Serie A": "I1", "Serie B": "I2"},
     "🇩🇪 GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
-    "🇫🇷 FRANCE": {"Ligue 1": "F1", "Ligue 2": "F2"},
-    "🇳🇱 NETHERLANDS": {"Eredivisie": "N1"},
-    "🇵🇹 PORTUGAL": {"Primeira Liga": "P1"},
-    "🇹🇷 TURKEY": {"Süper Lig": "T1"},
-    "🇧🇪 BELGIUM": {"Pro League": "B1"},
-    "🇦🇹 AUSTRIA": {"Bundesliga": "A1"},
-    "🏴󠁧󠁢󠁳󠁣󠁴󠁿 SCOTLAND": {"Premiership": "SC0"},
-    "🇨🇭 SWITZERLAND": {"Super League": "C1"},
-    "🇬🇷 GREECE": {"Super League": "G1"},
-    "🇩🇰 DENMARK": {"Superliga": "D1"},
-    "🇳🇴 NORWAY": {"Eliteserien": "N1"},
-    "🇸🇪 SWEDEN": {"Allsvenskan": "S1"},
-    "🇵🇱 POLAND": {"Ekstraklasa": "P1"},
-    "🇨🇿 CZECH REPUBLIC": {"First League": "CZ1"},
-    "🇺🇦 UKRAINE": {"Premier League": "U1"}
-}
-
-# --- SYNC ENGINE (Improved Error Handling) ---
-with st.sidebar
+    "🇫🇷 FRANCE": {"Ligue 1": "F
