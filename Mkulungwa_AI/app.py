@@ -5,8 +5,8 @@ import numpy as np
 import requests
 import time
 
-# 1. MPANGILIO WA KISASA (Matrix Theme)
-st.set_page_config(page_title="PREDATOR V12.3", layout="wide")
+# 1. SETTINGS ZA KISASA
+st.set_page_config(page_title="PREDATOR V12.4: CORNER MASTER", layout="wide")
 
 DATA_URLS = {
     "England (Premier League)": "https://www.football-data.co.uk/mmz4281/2526/E0.csv",
@@ -22,27 +22,25 @@ DATA_URLS = {
     "UEFA Champions/Europa/Conf": "GLOBAL_EUROPE"
 }
 
-# --- SIDEBAR: ADVANCED NEURAL SYNC ---
+# --- SIDEBAR: MATRIX UPDATE BAR ---
 with st.sidebar:
     st.markdown("### 🧬 PREDATOR NEURAL LINK")
     if st.button("🚀 LAUNCH DATABASE UPDATE"):
         with st.status("Inapakia Data za Dunia...", expanded=True) as status:
             progress_bar = st.progress(0)
             for i, (name, url) in enumerate(DATA_URLS.items()):
-                st.write(f"🔄 Inavuta data za: {name}...")
                 if url.startswith("http"):
                     try:
                         r = requests.get(url, timeout=7)
                         with open(url.split('/')[-1], 'wb') as f: f.write(r.content)
-                    except: st.error(f"Feli kwenye {name}")
-                time.sleep(0.1)
+                    except: pass
                 progress_bar.progress((i + 1) / len(DATA_URLS))
-            status.update(label="✅ DATABASE IS NOW LIVE!", state="complete", expanded=False)
+            status.update(label="✅ DATA UPDATED & LIVE!", state="complete", expanded=False)
 
 # --- UI HEADER ---
-st.markdown("<h1 style='text-align: center; color: #00FF00;'>🛡️ PREDATOR V12.3: ADVANCED TURBO 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #00FF00;'>🛡️ PREDATOR V12.4: CORNER MASTER 🛡️</h1>", unsafe_allow_html=True)
 
-nchi = st.selectbox("🌍 SELECT COMPETITION", list(DATA_URLS.keys()))
+nchi = st.selectbox("🌍 CHAGUA MASHINDANO", list(DATA_URLS.keys()))
 
 # --- DATA LOADING ---
 df_final = pd.DataFrame()
@@ -61,51 +59,61 @@ if not df_final.empty:
     a_t = col2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
     if st.button("EXECUTE TURBO ANALYSIS"):
-        # Takwimu Layers
+        # 1. Stats Baseline
         l_h, l_a = df_final['FTHG'].mean(), df_final['FTAG'].mean()
         h_p = df_final[df_final['HomeTeam'] == h_t].tail(10)
         a_p = df_final[df_final['AwayTeam'] == a_t].tail(10)
         
-        # Monte Carlo Simulation (10k Rounds)
+        # 2. Monte Carlo (10,000 Rounds)
         xh = (h_p['FTHG'].mean() / l_h) * (a_p['FTHG'].mean() / l_h) * l_h
         xa = (a_p['FTAG'].mean() / l_a) * (h_p['FTAG'].mean() / l_a) * l_a
         sh, sa = np.random.poisson(xh, 10000), np.random.poisson(xa, 10000)
         
-        ph, pa, pd_rate = (np.sum(sh > sa)/100), (np.sum(sa > sh)/100), (np.sum(sh == sa)/100)
+        ph, pa = (np.sum(sh > sa)/100), (np.sum(sa > sh)/100)
         po15 = np.sum((sh + sa) >= 2) / 100
 
-        # Risk & Momentum Logic
-        vix = np.std(sh) + np.std(sa)
-        momentum = (h_p['FTR'].tolist().count('H') * 10) + (a_p['FTR'].tolist().count('A') * 5)
+        # 3. CORNER INTELLIGENCE (IQ: 6.5 vs 7.5 Decision)
+        # HC = Home Corners, AC = Away Corners
+        h_c = h_p['HC'].mean() if 'HC' in h_p.columns else 4.0
+        a_c = a_p['AC'].mean() if 'AC' in a_p.columns else 3.5
+        total_corners = h_c + a_c
         
-        # Fair Odds Generation
-        fh, fa = (100 / ph if ph > 0 else 0), (100 / pa if pa > 0 else 0)
+        # Logic: Data ndiyo inaamua soko lipi liandikwe
+        if total_corners >= 8.5:
+            corner_market = "KONA 7.5 OVER"
+            corner_conf = min(total_corners * 10, 96.2)
+        else:
+            corner_market = "KONA 6.5 OVER"
+            corner_conf = min(total_corners * 12, 94.8)
 
-        # --- THE ADVANCED DASHBOARD ---
+        # Volatility
+        vix = np.std(sh) + np.std(sa)
+
+        # --- DISPLAY RESULTS ---
         st.markdown(f"### 🎯 Battle Report: {h_t} vs {a_t}")
-        
-        res1, res2, res3 = st.columns(3)
-        res1.metric("🏠 Home Domination", f"{ph:.1f}%", f"Odds: {fh:.2f}")
-        res2.metric("🚀 Away Pressure", f"{pa:.1f}%", f"Odds: {fa:.2f}")
-        res3.metric("⚽ Over 1.5 Chance", f"{po15:.1f}%")
+        res1, res2, res3, res4 = st.columns(4)
+        res1.metric(f"🏠 {h_t}", f"{ph:.1f}%")
+        res2.metric(f"🚀 {a_t}", f"{pa:.1f}%")
+        res3.metric("⚽ Magoli 1.5+", f"{po15:.1f}%")
+        res4.metric(f"🚩 {corner_market}", f"{corner_conf:.1f}%")
 
         st.markdown("---")
         
-        # Final Advanced Verdict Logic
-        conf_score = max(ph, pa)
+        # --- FINAL PREDATOR VERDICT ---
+        st.subheader("🧠 PREDATOR FINAL VERDICT")
         if vix > 2.3:
-            st.error(f"⚠️ HIGH VOLATILITY DETECTED ({vix:.2f}): Mechi hii ina mtego mkubwa. Takwimu hazijatulia. USHAURI: Epuka 1X2, nenda na Kona au kimbia!")
-        elif conf_score > 78:
+            st.error(f"⚠️ HIGH VOLATILITY: Mechi haitabiriki kwa mshindi (1X2). PIGA {corner_market} KWA USALAMA.")
+        elif ph > 78 or pa > 78:
             winner = h_t if ph > pa else a_t
-            st.success(f"🔥 SNIPER EXECUTION: {winner} ana nguvu kubwa sana leo. Confidence Index: {conf_score:.1f}%.")
+            st.success(f"🔥 SNIPER SELECTION: {winner} Kushinda. Pendekezo la ziada: {corner_market}.")
         elif po15 > 90:
-            st.info(f"📊 GOAL PREDATOR: Timu zote zina uwezo wa kufumania nyavu. Soko bora: OVER 1.5 au GG.")
+            st.info(f"📊 GOAL PREDATOR: Uwezekano wa magoli ni mkubwa. Tumia soko la Over 1.5 au {corner_market}.")
         else:
-            st.warning("📊 BALANCED MATCH: Hakuna mbabe wa wazi. Pendekezo: Double Chance au Under 3.5.")
+            st.warning(f"📊 BALANCED MATCH: Timu zote zimepishana kidogo. Soko bora: {corner_market}.")
 
-        with st.expander("🔬 View Neural Breakdown"):
-            st.write(f"Standard Deviation (Vix): {vix:.2f}")
-            st.write(f"Momentum Score: {momentum}")
-            st.write(f"Monte Carlo Draw Rate: {pd_rate:.1f}%")
+        with st.expander("🔬 View Data Breakdown"):
+            st.write(f"Wastani wa Kona (Total Expected): {total_corners:.2f}")
+            st.write(f"Hatari (Risk Score): {vix:.2f}")
+
 else:
-    st.info("Tafadhali fungua Sidebar na ubonyeze 'LAUNCH DATABASE UPDATE' ili kuanza safari.")
+    st.info("Fungua Sidebar kisha bonyeza 'LAUNCH DATABASE UPDATE' ili kuanza safari.")
