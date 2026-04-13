@@ -7,7 +7,7 @@ import time
 import hashlib
 
 # 1. UI SETUP
-st.set_page_config(page_title="MKULUNGWA AI V15.8", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V15.9", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,15 +24,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MASTER DATABASE STRUCTURE
-# "UEFA/EURO/CONF" sasa hivi inakuwa kundi moja kuu
+# 2. MASTER DATABASE STRUCTURE - FIXED & CLOSED PROPERLY
 LEAGUE_MAP = {
     "UEFA / EUROPA / CONFERENCE": {"ALL_EUROPE": "UEFA_ALL"},
     "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
     "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
     "ITALY": {"Serie A": "I1", "Serie B": "I2"},
-    "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
-    "FRANCE": {"Ligue 1": "F1"},
-    "NETHERLANDS": {"Eredivisie": "N1"},
-    "PORTUGAL": {"Primeira Liga": "P1"},
-    "TURKEY": {"Super Lig":
+    "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D
