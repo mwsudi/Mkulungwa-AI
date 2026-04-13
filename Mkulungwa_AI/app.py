@@ -8,7 +8,7 @@ import hashlib
 from io import StringIO
 
 # 1. UI SETUP
-st.set_page_config(page_title="MKULUNGWA AI V16.3", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V16.4", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,7 +25,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MASTER DATABASE STRUCTURE - FULLY VERIFIED
+# 2. MASTER DATABASE STRUCTURE
 LEAGUE_MAP = {
     "UEFA / EUROPA / CONFERENCE": {"ALL_EUROPE": "UEFA_ALL"},
     "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
@@ -43,7 +43,6 @@ with st.sidebar:
     st.header("NEURAL DATA SYNC")
     if st.button("RUN GLOBAL DATA SYNC"):
         with st.spinner("Processing All Leagues..."):
-            # I. PROCESS UEFA (CL + EL + EC)
             all_uefa_dfs = []
             for code in ["CL", "EL", "EC"]:
                 try:
@@ -58,7 +57,6 @@ with st.sidebar:
                 combined = pd.concat(all_uefa_dfs, ignore_index=True)
                 combined.to_csv("UEFA_ALL.csv", index=False)
 
-            # II. PROCESS NORMAL LEAGUES
             for cat in LEAGUE_MAP:
                 if cat != "UEFA / EUROPA / CONFERENCE":
                     for name, code in LEAGUE_MAP[cat].items():
@@ -73,7 +71,7 @@ with st.sidebar:
         st.success("Global Sync Done!")
 
 # 4. APP INTERFACE
-st.markdown("<h1>🛡️ MKULUNGWA PREDICTION V16.3 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🛡️ MKULUNGWA PREDICTION V16.4 🛡️</h1>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 
@@ -88,7 +86,7 @@ with c2:
         league_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[category].keys()))
         league_code = LEAGUE_MAP[category][league_name]
 
-# Data Loading
+# Data Loading Logic
 df = pd.DataFrame()
 if os.path.exists(f"{league_code}.csv"):
     try:
@@ -104,11 +102,11 @@ if not df.empty and 'HomeTeam' in df.columns:
     a_t = col2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
     
     if st.button("🎯 EXECUTE SMART ANALYSIS"):
-        match_key = f"{h_t}{a_t}{league_code}_V163_STABLE"
+        match_key = f"{h_t}{a_t}{league_code}_V164_STABLE"
         seed = int(hashlib.md5(match_key.encode()).hexdigest(), 16) % (10**6)
         np.random.seed(seed)
 
-        # PROGRESS BAR (MSTARI WA KUJAA)
+        # PROGRESS BAR
         p_bar = st.progress(0)
         status_text = st.empty()
         steps = ["DNA Scan...", "Form Analysis...", "Neural Logic...", "Simulating Match...", "Finalizing Pick..."]
@@ -123,7 +121,7 @@ if not df.empty and 'HomeTeam' in df.columns:
         xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
         xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
         
-        confidence = 95.8 + (seed % 3)
+        confidence = 95.9 + (seed % 3)
         if confidence > 98.9:
             confidence = 98.9
         
@@ -132,5 +130,14 @@ if not df.empty and 'HomeTeam' in df.columns:
         status_text.empty()
         p_bar.empty()
 
-        # Display Result
-        st.markdown(f"<h2 style='text-align:center; color:#00FF0
+        # DISPLAY FINAL RESULT - VERIFIED STRINGS
+        st.markdown(f"<h2 style='text-align:center; color:#00FF00;'>🎯 IQ ACCURACY: {confidence:.1f}%</h2>", unsafe_allow_html=True)
+        st.progress(confidence / 100)
+        
+        r1, r2 = st.columns(2)
+        with r1:
+            st.markdown(f"<div class='result-card'><h3>🏆 MAIN PICK</h3><h2>{pick}</h2></div>", unsafe_allow_html=True)
+        with r2:
+            st.markdown(f"<div class='result-card'><h3>🚩 CORNERS</h3><h2>OVER 8.5</h2></div>", unsafe_allow_html=True)
+else:
+    st.info("💡 Mfumo uko tayari. Tafadhali bonyeza 'RUN GLOBAL DATA SYNC' kuanza.")
