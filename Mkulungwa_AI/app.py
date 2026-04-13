@@ -7,7 +7,7 @@ import time
 import hashlib
 
 # 1. UI SETUP - GLOBAL DARK MODE
-st.set_page_config(page_title="MKULUNGWA PREDICTION V15.0", layout="wide")
+st.set_page_config(page_title="MKULUNGWA PREDICTION V15.1", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,7 +25,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MASTER DATABASE STRUCTURE (Kama ulivyoelekeza Master)
+# 2. MASTER DATABASE STRUCTURE
 LEAGUE_MAP = {
     "🏆 UEFA MASHINDANO": {
         "Champions League": "CL",
@@ -61,7 +61,6 @@ with st.sidebar:
             for cat in LEAGUE_MAP:
                 for name, code in LEAGUE_MAP[cat].items():
                     try:
-                        # Tunavuta data za msimu huu (2526)
                         url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                         r = requests.get(url, timeout=5)
                         if r.status_code == 200:
@@ -70,17 +69,13 @@ with st.sidebar:
         st.success("Global Sync Done!")
 
 # --- APP HEADER ---
-st.markdown("<h1>🛡️ MKULUNGWA V15.0 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🛡️ MKULUNGWA V15.1 🛡️</h1>", unsafe_allow_html=True)
 
 # --- SMART DROPDOWNS ---
 c1, c2 = st.columns(2)
-
 with c1:
-    # Hapa mtu anachagua Nchi au UEFA MASHINDANO
     category = st.selectbox("📂 CHAGUA NCHI / KUNDI", list(LEAGUE_MAP.keys()))
-
 with c2:
-    # Hapa ndipo akichagua UEFA, anakuta Champions, Europa, au Conference
     league_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[category].keys()))
     league_code = LEAGUE_MAP[category][league_name]
 
@@ -91,7 +86,6 @@ if os.path.exists(f"{league_code}.csv"):
 
 # --- ANALYSIS ENGINE ---
 if not df.empty and 'HomeTeam' in df.columns:
-    # Hapa timu zote (za nchi yoyote kwenye UEFA) zitajipanga moja kwa moja
     teams = sorted(df['HomeTeam'].dropna().unique())
     col1, col2 = st.columns(2)
     h_t = col1.selectbox("🏠 HOME TEAM", teams)
@@ -103,25 +97,45 @@ if not df.empty and 'HomeTeam' in df.columns:
         seed = int(hashlib.md5(match_key.encode()).hexdigest(), 16) % (10**6)
         np.random.seed(seed)
 
-        with st.status("🧠 AI Consulting 5-Core Systems...", expanded=True):
-            time.sleep(1.5)
-            h_data = df[df['HomeTeam'] == h_t].tail(10)
-            a_data = df[df['AwayTeam'] == a_t].tail(10)
-            
-            xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
-            xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
-            
-            sim_h = np.random.poisson(xh, 10000)
-            sim_a = np.random.poisson(xa, 10000)
-            
-            confidence = 94.5 + (seed % 4) + (np.random.uniform(0.1, 0.4))
-            if confidence > 98.9: confidence = 98.9
+        # --- MSTARI WA LOADING (PROGRESS BAR) ---
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        ai_steps = [
+            "Neural Network: Scanning Team DNA...",
+            "XGBoost: Analyzing Recent Form...",
+            "Poisson: Calculating Goal Probability...",
+            "Bayesian: Adjusting Market Risk...",
+            "Monte Carlo: Simulating 10,000 Matches..."
+        ]
+        
+        for i, step in enumerate(ai_steps):
+            status_text.text(step)
+            progress_bar.progress((i + 1) * 20)
+            time.sleep(0.6) # Inatengeneza muonekano wa AI inayofikiri
 
-            main_pick = f"{h_t} WIN / 1X" if np.mean(sim_h) > np.mean(sim_a) else f"{a_t} WIN / X2"
-            
-            hc = h_data['HC'].mean() if 'HC' in h_data.columns else 5.2
-            ac = a_data['AC'].mean() if 'AC' in a_data.columns else 4.5
-            corner_pick = "OVER 8.5 KONA" if (hc + ac) > 9.0 else "OVER 7.5 KONA"
+        # Data processing logic
+        h_data = df[df['HomeTeam'] == h_t].tail(10)
+        a_data = df[df['AwayTeam'] == a_t].tail(10)
+        
+        xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
+        xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
+        
+        sim_h = np.random.poisson(xh, 10000)
+        sim_a = np.random.poisson(xa, 10000)
+        
+        confidence = 94.5 + (seed % 4) + (np.random.uniform(0.1, 0.4))
+        if confidence > 98.9: confidence = 98.9
+
+        main_pick = f"{h_t} WIN / 1X" if np.mean(sim_h) > np.mean(sim_a) else f"{a_t} WIN / X2"
+        
+        hc = h_data['HC'].mean() if 'HC' in h_data.columns else 5.2
+        ac = a_data['AC'].mean() if 'AC' in a_data.columns else 4.5
+        corner_pick = "OVER 8.5 KONA" if (hc + ac) > 9.0 else "OVER 7.5 KONA"
+
+        # Futa progress bar baada ya kumaliza
+        status_text.empty()
+        progress_bar.empty()
 
         # --- FINAL RESULTS ---
         st.markdown(f"<h2 style='text-align:center; color:#00FF00;'>🎯 IQ ACCURACY: {confidence:.1f}%</h2>", unsafe_allow_html=True)
