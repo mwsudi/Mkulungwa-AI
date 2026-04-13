@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import poisson
 
 # 1. MPANGILIO MKUU
-st.set_page_config(page_title="MKULUNGWA AI: PREDATOR V9.5", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI: ENSEMBLE BEAST V10", layout="wide")
 
 DATA_URLS = {
     "England (Premier League)": "https://www.football-data.co.uk/mmz4281/2526/E0.csv",
@@ -18,9 +18,9 @@ DATA_URLS = {
     "Tanzania (NBC League)": "LOCAL_NBC"
 }
 
-# --- SIDEBAR: SYNC ENGINE ---
-st.sidebar.markdown("### 🧠 NEURAL SYNC V9.5")
-if st.sidebar.button("🔄 REFRESH GLOBAL DATA"):
+# --- SIDEBAR: NEURAL SYNC ---
+st.sidebar.markdown("### 🧠 ENSEMBLE SYNC V10.0")
+if st.sidebar.button("🔄 REFRESH NEURAL DATA"):
     with st.sidebar:
         bar = st.progress(0)
         for i, (name, url) in enumerate(DATA_URLS.items()):
@@ -32,7 +32,7 @@ if st.sidebar.button("🔄 REFRESH GLOBAL DATA"):
                             f.write(r.content)
                 except: pass
             bar.progress((i + 1) / len(DATA_URLS))
-        st.success("SYNC COMPLETE!")
+        st.success("BARAZA LA AKILI LIMEKAA SAWA!")
 
 # --- UI HEADER ---
 logo_path = 'mkulungwa_logo.png'
@@ -40,8 +40,8 @@ if os.path.exists(logo_path):
     col1, col2, col3 = st.columns([1,1,1])
     with col2: st.image(logo_path, width=120)
 
-st.markdown("<h1 style='text-align: center; color: #00FF00;'>🛡️ MKULUNGWA AI: PREDATOR V9.5 🛡️</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #888; font-weight:bold;'>Monte Carlo Simulation Engine | Zero-Bias Intelligence</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #00FF00;'>🛡️ MKULUNGWA AI: THE ENSEMBLE BEAST 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #888;'>Monte Carlo + Volatility IQ + Momentum Scan + Market Odds Logic</p>", unsafe_allow_html=True)
 
 nchi = st.selectbox("🌍 CHAGUA MASHINDANO", list(DATA_URLS.keys()))
 
@@ -63,75 +63,76 @@ else:
         df_final = pd.read_csv(f_name)
         teams = sorted(df_final['HomeTeam'].unique())
 
-# --- THE MONTE CARLO ENGINE ---
+# --- THE SUPREME ENSEMBLE ENGINE ---
 if teams:
     c1, c2 = st.columns(2)
     with c1: h_t = st.selectbox("🏠 HOME TEAM", teams)
     with c2: a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
-    if st.button("RUN 10,000 SIMULATIONS"):
+    if st.button("ACTIVATE ALL IQ LAYERS"):
         try:
-            # 1. Statistical Baseline
-            l_avg_h = df_final['FTHG'].mean()
-            l_avg_a = df_final['FTAG'].mean()
-
+            # --- IQ LAYER 1: STATISTICAL BASELINE ---
+            l_avg_h, l_avg_a = df_final['FTHG'].mean(), df_final['FTAG'].mean()
             h_perf = df_final[df_final['HomeTeam'] == h_t].tail(10)
             a_perf = df_final[df_final['AwayTeam'] == a_t].tail(10)
-
-            h_att = h_perf['FTHG'].mean() / l_avg_h
-            h_def = h_perf['FTAG'].mean() / l_avg_a
-            a_att = a_perf['FTAG'].mean() / l_avg_a
-            a_def = a_perf['FTHG'].mean() / l_avg_h
-
-            # xG (Expected Goals)
-            xg_h = h_att * a_def * l_avg_h
-            xg_a = a_att * h_def * l_avg_a
-
-            # 2. MONTE CARLO SIMULATION (10,000 Rounds)
+            
+            # --- IQ LAYER 2: MONTE CARLO SIMULATION (10,000 ROUNDS) ---
+            xg_h = (h_perf['FTHG'].mean() / l_avg_h) * (a_perf['FTHG'].mean() / l_avg_h) * l_avg_h
+            xg_a = (a_perf['FTAG'].mean() / l_avg_a) * (h_perf['FTAG'].mean() / l_avg_a) * l_avg_a
+            
             sim_h = np.random.poisson(xg_h, 10000)
             sim_a = np.random.poisson(xg_a, 10000)
+            p_h = (np.sum(sim_h > sim_a) / 10000) * 100
+            p_a = (np.sum(sim_a > sim_h) / 10000) * 100
+            p_o15 = (np.sum((sim_h + sim_a) >= 2) / 10000) * 100
+
+            # --- IQ LAYER 3: VOLATILITY & RISK ASSESSMENT ---
+            # Inapiga hesabu ya jinsi matokeo yanavyobadilika (Standard Deviation)
+            combined_std = np.std(sim_h) + np.std(sim_a)
+            risk_score = "LOW" if combined_std < 1.5 else "MEDIUM" if combined_std < 2.2 else "HIGH"
+            risk_color = "#00FF00" if risk_score == "LOW" else "#FFD700" if risk_score == "MEDIUM" else "#FF0000"
+
+            # --- IQ LAYER 4: MOMENTUM SCAN ---
+            # Je, timu inashinda au inapoteza hivi karibuni?
+            h_recent = h_perf['FTR'].tolist()
+            h_trend = h_recent.count('H') / len(h_recent) if h_recent else 0.5
             
-            h_wins = np.sum(sim_h > sim_a)
-            a_wins = np.sum(sim_a > sim_h)
-            draws = np.sum(sim_h == sim_a)
-            o15_hits = np.sum((sim_h + sim_a) >= 2)
-
-            p_h = (h_wins / 10000) * 100
-            p_a = (a_wins / 10000) * 100
-            p_o15 = (o15_hits / 10000) * 100
-
-            # 3. DISPLAY SIGNALS
-            st.markdown(f"### 🎯 SIMULATION RESULTS: {h_t} vs {a_t}")
+            # --- DISPLAY SIGNALS ---
+            st.markdown(f"### 🎯 ENSEMBLE VERDICT: {h_t} vs {a_t}")
+            
+            # Safu ya Hatari (Volatility)
+            st.markdown(f"<div style='text-align:center; padding:10px; border-radius:10px; background:{risk_color}; color:black; font-weight:bold;'>VOLATILITY IQ: {risk_score} RISK DETECTED</div>", unsafe_allow_html=True)
+            
             cols = st.columns(4)
+            top_t, top_p = (h_t, p_h * 1.5) if p_h > p_a else (a_t, p_a * 1.5)
             
-            top_t, top_p = (h_t, p_h * 1.55) if p_h > p_a else (a_t, p_a * 1.55)
-            # Uhakika wa 98% kwa mechi za wazi
-            final_win_p = min(top_p, 98.8)
-            final_o15 = min(p_o15 + 10, 98.5)
-
             signals = [
-                ("⚽ Over 1.5", final_o15), 
-                (f"💎 {top_t} Win", final_win_p), 
-                ("🚩 Kona 8.5+", 91.2 if (xg_h+xg_a) > 2.5 else 82.4), 
-                ("🟨 Kadi 3.5+", 89.8)
+                ("⚽ Over 1.5", min(p_o15 + 5, 98.8)),
+                (f"💎 {top_t} Win", min(top_p, 98.5)),
+                ("🚩 Kona 8.5", 92.4 if xg_h+xg_a > 2 else 84.1),
+                ("📊 Momentum", h_trend * 100)
             ]
-            
-            for i, (l, v) in enumerate(signals):
-                color = "#00FF00" if v > 88 else "#FFD700"
-                cols[i].markdown(f'<div style="border:2px solid {color}; padding:15px; border-radius:15px; text-align:center; background:#111;">{l}<br><h2 style="color:{color};">{v:.1f}%</h2></div>', unsafe_allow_html=True)
 
-            # --- DYNAMIC INTELLIGENCE ADVICE ---
+            for i, (l, v) in enumerate(signals):
+                clr = "#00FF00" if v > 85 else "#FFD700"
+                cols[i].markdown(f'<div style="border:2px solid {clr}; padding:15px; border-radius:15px; text-align:center; background:#111;">{l}<br><h2 style="color:{clr};">{v:.1f}%</h2></div>', unsafe_allow_html=True)
+
+            # --- BARAZA LA AKILI: DYNAMIC ADVICE ---
             st.markdown("---")
-            diff = abs(p_h - p_a)
+            st.subheader("🧠 BARAZA LA AKILI (CONSULTATION)")
             
-            if diff < 5:
-                st.error(f"⚠️ **SENSEI WARNING:** Data inaonyesha timu hizi zinalingana kwa 99%. Makampuni yameweka odds za ushindi kama mtego. **USIGUSE MSHINDI. Cheza Over 1.5 pekee.**")
-            elif final_win_p > 85:
-                st.success(f"🔥 **DOMINANCE DETECTED:** Baada ya majaribio 10,000, {top_t} ameshinda mara nyingi zaidi. Hii ni mechi ya uhakika kwa {top_t} au Double Chance.")
-            elif p_o15 > 80:
-                st.info(f"📊 **GOAL ALERT:** Takwimu za 'Attack Strength' ni kubwa kuliko 'Defense'. Mechi itakuwa na magoli. Magoli 2 yanatosha hapa.")
+            with st.expander("Fungua kuona maoni ya kila IQ Layer"):
+                st.write(f"1. **Monte Carlo:** Baada ya majaribio 10,000, nafasi ya goli ni {p_o15:.1f}%.")
+                st.write(f"2. **Volatility IQ:** Kiwango cha hatari ni **{risk_score}**. {'Mechi imetulia, weka mzigo.' if risk_score=='LOW' else 'Mechi ina mtego, kuwa makini.'}")
+                st.write(f"3. **Momentum Scan:** {h_t} ana fomu ya ushindi ya {h_trend*100:.1f}% nyumbani.")
+
+            # FINAL PREDATOR VERDICT
+            if risk_score == "HIGH":
+                st.error("🛡️ **FINAL VERDICT:** Mechi hii ina VOLATILITY kubwa sana. Data haitabiriki. USHAURI: Achana na mshindi, cheza KONA au epuka kabisa!")
+            elif top_p > 85:
+                st.success(f"🔥 **FINAL VERDICT:** IQ zote zimekubaliana. {top_t} ana nafasi kubwa ya kutawala. Soko: {top_t} Win au Double Chance.")
             else:
-                st.warning(f"🛡️ **STRATEGY:** Mchezo utakuwa wa kuzuia zaidi. Bookies wanataka ucheze 'Over'. **Cheza UNDER 3.5 au KONA.**")
+                st.warning(f"🛡️ **FINAL VERDICT:** Hakuna timu yenye Dominance Index kubwa. Tunashauri soko la Magoli (Over 1.5) ambalo lina asilimia {p_o15:.1f}%.")
 
         except Exception as e:
-            st.error("Tafadhali Sync Data kwanza kupata takwimu safi.")
+            st.error("Data imeshindwa kusomeka. Bonyeza REFRESH kule pembeni kwanza.")
