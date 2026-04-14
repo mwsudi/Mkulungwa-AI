@@ -20,41 +20,79 @@ def init_db():
                  (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS system_config 
                  (key TEXT PRIMARY KEY, value TEXT)''')
-    # Admin wa kwanza
     admin_pw = hashlib.sha256("admin123".encode()).hexdigest()
     c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?)", ("admin", admin_pw, "admin", "active"))
     conn.commit()
     conn.close()
 
 # --- 1. ULTIMATE UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V18.0", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V18.5", layout="wide")
 init_db()
 
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
+
     .main { background-color: #0E1117; color: #E0E0E0; }
+    
+    /* Branding Box */
+    .brand-box {
+        border: 2px solid #00FF00;
+        border-radius: 50px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 30px;
+        background: rgba(0, 255, 0, 0.03);
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    }
+    
+    .brand-text {
+        font-family: 'Courier Prime', monospace;
+        color: #00FF00;
+        font-size: 45px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        text-shadow: 2px 2px 10px rgba(0, 255, 0, 0.5);
+        margin: 0;
+    }
+
     .stButton>button { 
         background: linear-gradient(90deg, #00FF00, #008000); 
         color: white; border-radius: 15px; height: 3.5em; width: 100%; border: none; font-weight: bold;
-        box-shadow: 0px 5px 15px rgba(0, 255, 0, 0.4);
     }
+    
+    .login-container { 
+        max-width: 500px; 
+        margin: 0 auto; 
+        padding: 40px; 
+        background: #1A1C24; 
+        border-radius: 20px; 
+        border: 1px solid #333;
+    }
+    
     .result-card-green { background: #1A1C24; padding: 25px; border-radius: 20px; border-left: 10px solid #00FF00; }
-    .advice-box { background: rgba(0,255,0,0.05); border: 1px solid #00FF00; padding: 20px; border-radius: 15px; color: #00FF00; }
-    h1 { color: #00FF00; text-align: center; font-weight: 900; }
-    .login-container { max-width: 450px; margin: 0 auto; padding: 30px; background: #1A1C24; border-radius: 20px; border: 1px solid #00FF00; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. LOGIN LOGIC
+# 2. LOGIN & SECURITY LOGIC
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
+    
     with col2:
+        # Branding ndani ya Box
+        st.markdown("""
+            <div class='brand-box'>
+                <p class='brand-text'>🛡️ MKULUNGWA AI</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
         st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-        st.markdown("<h1>🛡️ MKULUNGWA AI</h1>", unsafe_allow_html=True)
-        tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
+        tab1, tab2, tab3 = st.tabs(["🔒 LOGIN", "📝 REGISTER", "🔑 CHANGE PASS"])
+        
         with tab1:
             u = st.text_input("Username", key="l_u")
             p = st.text_input("Password", type="password", key="l_p")
@@ -68,21 +106,38 @@ if not st.session_state.auth:
                         st.session_state.auth, st.session_state.user, st.session_state.role = True, u, user[0]
                         st.rerun()
                     else: st.error("❌ AKAUNTI IMEFUNGWA!")
-                else: st.error("🚨 Wrong Credentials")
+                else: st.error("🚨 Username au Password siyo sahihi.")
+        
         with tab2:
-            nu = st.text_input("New User", key="r_u")
-            np = st.text_input("New Pass", type="password", key="r_p")
-            if st.button("CREATE ACCOUNT"):
+            nu = st.text_input("New Username", key="r_u")
+            np = st.text_input("New Password", type="password", key="r_p")
+            if st.button("CREATE MASTER ACCOUNT"):
                 conn = sqlite3.connect(DB_NAME); c = conn.cursor()
                 try:
                     c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", (nu, hashlib.sha256(np.encode()).hexdigest(), "user", "active"))
-                    conn.commit(); st.success("✅ Karibu! Sasa Login.")
-                except: st.error("❌ Jina lipo.")
+                    conn.commit(); st.success("✅ Karibu! Sasa tumia Login.")
+                except: st.error("❌ Jina hili tayari lipo.")
+                conn.close()
+
+        with tab3:
+            st.markdown("<p style='color:#888;'>Badilisha password yako hapa.</p>", unsafe_allow_html=True)
+            cu = st.text_input("Username", key="c_u")
+            old_p = st.text_input("Old Password", type="password", key="o_p")
+            new_p = st.text_input("New Password", type="password", key="n_p")
+            if st.button("UPDATE PASSWORD"):
+                conn = sqlite3.connect(DB_NAME); c = conn.cursor()
+                hashed_old = hashlib.sha256(old_p.encode()).hexdigest()
+                c.execute("SELECT * FROM users WHERE username=? AND password=?", (cu, hashed_old))
+                if c.fetchone():
+                    hashed_new = hashlib.sha256(new_p.encode()).hexdigest()
+                    c.execute("UPDATE users SET password=? WHERE username=?", (hashed_new, cu))
+                    conn.commit(); st.success("✅ Password imebadilishwa!")
+                else: st.error("❌ Username au Password ya zamani siyo sahihi.")
                 conn.close()
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # 3. LEAGUE CONFIG
+    # --- APP DASHBOARD (Vuta logic ya Admin ya ku-update data mara moja) ---
     LEAGUE_MAP = {
         "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
         "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
@@ -94,27 +149,24 @@ else:
         "PORTUGAL": {"Primeira Liga": "P1"},
         "TURKEY": {"Super Lig": "T1"},
         "BELGIUM": {"Pro League": "B1"},
-        "SCOTLAND": {"Premiership": "SC0"},
-        "GREECE": {"Super League": "G1"}
+        "SCOTLAND": {"Premiership": "SC0"}
     }
 
-    # --- SIDEBAR (ADMIN CONTROL ONLY) ---
     with st.sidebar:
-        st.markdown(f"### 👤 {st.session_state.user.upper()}")
+        # Branding ndani ya Sidebar pia
+        st.markdown("<div style='border:1px solid #00FF00; padding:10px; border-radius:15px; text-align:center;'><p style='font-family:monospace; color:#00FF00; margin:0;'>🛡️ MKULUNGWA AI</p></div>", unsafe_allow_html=True)
+        st.write(f"Active: **{st.session_state.user.upper()}**")
         if st.button("🚪 LOGOUT"): st.session_state.auth = False; st.rerun()
-        st.markdown("---")
         
         if st.session_state.role == "admin":
-            st.markdown("### 🛠️ ADMIN PANEL")
-            # Kitufe cha siri cha Admin ku-update data kwa watumiaji wote
+            st.markdown("---")
             if st.button("🚀 BROADCAST GLOBAL SYNC"):
                 all_dfs = []
                 leagues = []
                 for cat, sub in LEAGUE_MAP.items():
                     if cat != "UEFA / EUROPA / CONFERENCE":
                         for n, c in sub.items(): leagues.append((n, c))
-                
-                p_bar = st.progress(0, text="Updating cloud database...")
+                p_bar = st.progress(0)
                 for i, (n, c) in enumerate(leagues):
                     try:
                         url = f"https://www.football-data.co.uk/mmz4281/2526/{c}.csv"
@@ -126,29 +178,13 @@ else:
                     except: continue
                 if all_dfs:
                     pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
-                    st.success("✅ GLOBAL UPDATE COMPLETE!")
-            
-            st.markdown("---")
-            if st.checkbox("Manage Users"):
-                conn = sqlite3.connect(DB_NAME)
-                users = pd.read_sql_query("SELECT username, status FROM users WHERE role='user'", conn)
-                for i, row in users.iterrows():
-                    c1, c2 = st.columns([2, 1])
-                    c1.write(row['username'])
-                    if c2.button("BLOCK" if row['status']=='active' else "UNBLOCK", key=row['username']):
-                        new_s = 'inactive' if row['status']=='active' else 'active'
-                        conn.execute("UPDATE users SET status=? WHERE username=?", (new_s, row['username']))
-                        conn.commit(); st.rerun()
-                conn.close()
+                    st.success("✅ DATA UPDATED!")
 
-    # --- 4. MAIN APP ---
-    st.markdown("<h1>MKULUNGWA AI V18.0</h1>", unsafe_allow_html=True)
+    # --- MAIN VIEW ---
+    st.markdown("<h2 style='text-align:center; color:#00FF00;'>🎯 NEURAL IQ DASHBOARD</h2>", unsafe_allow_html=True)
     
     cat = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
-    if cat == "UEFA / EUROPA / CONFERENCE": l_code = "UEFA_ALL"
-    else:
-        l_name = st.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))
-        l_code = LEAGUE_MAP[cat][l_name]
+    l_code = "UEFA_ALL" if cat == "UEFA / EUROPA / CONFERENCE" else LEAGUE_MAP[cat][st.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))]
 
     if os.path.exists(f"{l_code}.csv"):
         df = pd.read_csv(f"{l_code}.csv")
@@ -157,7 +193,6 @@ else:
         a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
         if st.button("🎯 RUN MASTER ANALYSIS"):
-            # Logic ya siri (Original V17.7)
             m_key = f"{h_t}{a_t}{l_code}_V18"
             seed = int(hashlib.md5(m_key.encode()).hexdigest(), 16) % (10**6)
             np.random.seed(seed); random.seed(seed)
@@ -168,12 +203,9 @@ else:
             xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
             conf = 96.5 + (seed % 25) / 10
             
-            res_dc = "1X" if xh > xa else "X2" if xa > xh else "12"
-            res_gl = "OVER 2.5" if (xh+xa) > 2.5 else "OVER 1.5"
-            
             st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
             r1, r2 = st.columns(2)
-            r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{res_dc}</h2></div>", unsafe_allow_html=True)
-            r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
+            r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{'1X' if xh > xa else 'X2'}</h2></div>", unsafe_allow_html=True)
+            r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{'OVER 2.5' if (xh+xa)>2.5 else 'OVER 1.5'}</h2></div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ Data is currently being prepared by the Admin. Please check back later.")
+        st.info("💡 Subiri Admin afanye Sync ya kwanza kisha utaona timu hapa.")
