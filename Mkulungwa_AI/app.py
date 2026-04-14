@@ -16,13 +16,11 @@ DB_NAME = "mkulungwa_sys.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    # Nimeongeza firstname na lastname kwenye table ya users
     c.execute('''CREATE TABLE IF NOT EXISTS users 
                  (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT, 
                   firstname TEXT, lastname TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS system_config 
                  (key TEXT PRIMARY KEY, value TEXT)''')
-    # Admin wa kwanza
     admin_pw = hashlib.sha256("admin123".encode()).hexdigest()
     c.execute("INSERT OR IGNORE INTO users (username, password, role, status) VALUES (?, ?, ?, ?)", 
               ("admin", admin_pw, "admin", "active"))
@@ -90,7 +88,7 @@ if not st.session_state.auth:
                 if fname and lname and nu and np:
                     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
                     try:
-                        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", 
+                        c.execute("INSERT INTO users (username, password, role, status, firstname, lastname) VALUES (?, ?, ?, ?, ?, ?)", 
                                   (nu, hashlib.sha256(np.encode()).hexdigest(), "user", "active", fname, lname))
                         conn.commit(); st.success("✅ Karibu! Sasa Login.")
                     except: st.error("❌ Username lipo.")
@@ -161,7 +159,6 @@ else:
             st.markdown("---")
             if st.checkbox("Manage Users"):
                 conn = sqlite3.connect(DB_NAME)
-                # Sasa unaona majina yao kamili kwenye dashboard yako
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
                 for i, row in users.iterrows():
                     c1, c2 = st.columns([2, 1])
@@ -201,4 +198,11 @@ else:
             res_dc = "1X" if xh > xa else "X2" if xa > xh else "12"
             res_gl = "OVER 2.5" if (xh+xa) > 2.5 else "OVER 1.5"
             
-            st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {
+            # Hapa ndipo palipokuwa na kosa Master, sasa pameshafungwa mabano vizuri!
+            st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
+            
+            r1, r2 = st.columns(2)
+            r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{res_dc}</h2></div>", unsafe_allow_html=True)
+            r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ Data is currently being prepared by the Admin.")
