@@ -118,4 +118,38 @@ else:
     # Unganisha data zote nchi zote
     big_df = get_combined_data()
     
-    if not big_df.empty
+    if not big_df.empty:
+        # Pata timu zote duniani zilizopo kwenye database yetu
+        all_teams = sorted(big_df['HomeTeam'].dropna().unique())
+        
+        c1, c2 = st.columns(2)
+        home = c1.selectbox("🏠 CHAGUA HOME TEAM (Popote Ulaya)", all_teams)
+        away = c2.selectbox("🚀 CHAGUA AWAY TEAM (Popote Ulaya)", [t for t in all_teams if t != home])
+        
+        if st.button("🎯 PIGA NEURAL ANALYSIS"):
+            with st.spinner("🧠 AI inachambua data za nchi zote..."):
+                exp_h, exp_a, conf = calculate_combined_iq(big_df, home, away)
+                time.sleep(1)
+            
+            st.markdown(f"""
+                <div style="background:#1A1C24; padding:30px; border-radius:15px; border:2px solid #00FF00; text-align:center;">
+                    <h2>{home} VS {away}</h2>
+                    <div style="display:flex; justify-content:space-around;">
+                        <div><p>EXPECTED GOALS</p><h1 style='color:white;'>{exp_h:.2f} - {exp_a:.2f}</h1></div>
+                        <div><p>NEURAL CONFIDENCE</p><h1 style='color:#00FF00;'>{conf}%</h1></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Advice
+            total = exp_h + exp_a
+            if total > 2.5: advice = "OVER 2.5 & GG"
+            elif exp_h > exp_a + 0.5: advice = f"HOME WIN ({home})"
+            elif exp_a > exp_h + 0.5: advice = f"AWAY WIN ({away})"
+            else: advice = "DRAW OR UNDER 2.5"
+            
+            st.markdown(f"<h2 style='text-align:center; background:#00FF00; color:black; padding:10px; margin-top:20px; border-radius:10px;'>ADVICE: {advice}</h2>", unsafe_allow_html=True)
+    else:
+        st.error("❌ Data hazijapatikana. Hakikisha una internet na u-refresh.")
+
+    st.markdown("<br><hr><center>📞 Master: 0699470308 | V20.9 Global Edition</center>", unsafe_allow_html=True)
