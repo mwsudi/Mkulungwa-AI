@@ -10,25 +10,39 @@ import sqlite3
 from io import StringIO
 from datetime import datetime
 
-# --- 0. DATABASE ENGINE ---
+# --- 0. DATABASE ENGINE (UPGRADED) ---
 DB_NAME = "mkulungwa_sys.db"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+    # Hakikisha table ya msingi ipo
     c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT, 
-                  firstname TEXT, lastname TEXT)''')
+                 (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT)''')
+    
+    # --- AUTO-MIGRATION LOGIC (Hapa ndipo tunatibu ile Error) ---
+    # Tunakagua kama columns mpya zipo, kama hazipo tunaziongeza
+    cursor = conn.execute('PRAGMA table_info(users)')
+    columns = [column[1] for column in cursor.fetchall()]
+    
+    if 'firstname' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN firstname TEXT DEFAULT ''")
+    if 'lastname' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN lastname TEXT DEFAULT ''")
+    
     c.execute('''CREATE TABLE IF NOT EXISTS system_config 
                  (key TEXT PRIMARY KEY, value TEXT)''')
+    
+    # Admin wa kwanza
     admin_pw = hashlib.sha256("admin123".encode()).hexdigest()
     c.execute("INSERT OR IGNORE INTO users (username, password, role, status) VALUES (?, ?, ?, ?)", 
               ("admin", admin_pw, "admin", "active"))
+    
     conn.commit()
     conn.close()
 
 # --- 1. ULTIMATE UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V18.0", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V18.5", layout="wide")
 init_db()
 
 st.markdown("""
@@ -159,10 +173,13 @@ else:
             st.markdown("---")
             if st.checkbox("Manage Users"):
                 conn = sqlite3.connect(DB_NAME)
+                # Hapa ndipo ilikuwa inagoma, sasa columns zitaumbwa na init_db()
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
                 for i, row in users.iterrows():
                     c1, c2 = st.columns([2, 1])
-                    c1.write(f"👤 {row['firstname']} {row['lastname']} (@{row['username']})")
+                    f_name = row['firstname'] if row['firstname'] else "N/A"
+                    l_name = row['lastname'] if row['lastname'] else ""
+                    c1.write(f"👤 {f_name} {l_name} (@{row['username']})")
                     if c2.button("BLOCK" if row['status']=='active' else "UNBLOCK", key=row['username']):
                         new_s = 'inactive' if row['status']=='active' else 'active'
                         conn.execute("UPDATE users SET status=? WHERE username=?", (new_s, row['username']))
@@ -198,9 +215,7 @@ else:
             res_dc = "1X" if xh > xa else "X2" if xa > xh else "12"
             res_gl = "OVER 2.5" if (xh+xa) > 2.5 else "OVER 1.5"
             
-            # Hapa ndipo palipokuwa na kosa Master, sasa pameshafungwa mabano vizuri!
             st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
-            
             r1, r2 = st.columns(2)
             r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{res_dc}</h2></div>", unsafe_allow_html=True)
             r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
