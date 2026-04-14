@@ -36,30 +36,25 @@ def init_db():
     conn.close()
 
 # --- 1. UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V18.6", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V18.7", layout="wide")
 init_db()
 
-# CSS ya kuongeza picha ya juu na kurembesha
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
     
     .main { background-color: #0E1117; color: #E0E0E0; }
     
-    /* Picha ya Juu (Banner/Watermark) */
-    .hero-banner {
-        background-image: linear-gradient(rgba(14, 17, 23, 0.6), rgba(14, 17, 23, 0.9)), 
-                          url('https://img.freepik.com/free-photo/view-futuristic-football-stadium_23-2151042784.jpg');
-        background-size: cover;
-        background-position: center;
-        height: 250px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 20px;
-        border: 2px solid #00FF00;
-        margin-bottom: -100px;
-        box-shadow: 0px 10px 30px rgba(0, 255, 0, 0.2);
+    /* Logo Container - Inazuia mabox kupandiana */
+    .logo-container {
+        text-align: center;
+        padding: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .logo-img {
+        max-width: 300px; /* Unaweza kubadili size hapa */
+        filter: drop-shadow(0px 0px 15px rgba(0, 255, 0, 0.5));
     }
 
     .stButton>button { 
@@ -67,18 +62,14 @@ st.markdown("""
         color: white; border-radius: 15px; height: 3.5em; width: 100%; border: none; font-weight: bold;
     }
     
-    .brand-text {
-        font-family: 'Courier Prime', monospace; color: #00FF00; font-size: 50px;
-        font-weight: 900; letter-spacing: 5px; text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8);
-        margin: 0;
-    }
-
     .login-container { 
-        max-width: 480px; margin: 0 auto; padding: 40px; background: #1A1C24; 
-        border-radius: 25px; border: 1px solid rgba(0, 255, 0, 0.3);
+        max-width: 480px; 
+        margin: 0 auto; 
+        padding: 30px; 
+        background: #1A1C24; 
+        border-radius: 25px; 
+        border: 2px solid #00FF00;
         box-shadow: 0px 15px 35px rgba(0,0,0,0.5);
-        position: relative;
-        z-index: 10;
     }
     
     /* Vitufe vya Admin vya kufuta */
@@ -92,13 +83,13 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
-    # Sehemu ya Picha ya Juu
-    st.markdown("""
-        <div class='hero-banner'>
-            <p class='brand-text'>MKULUNGWA AI</p>
-        </div>
-        <br><br>
-    """, unsafe_allow_html=True)
+    # Kuweka Logo ya mkulungwa_png.png juu ya fomu
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    if os.path.exists("mkulungwa_png.png"):
+        st.image("mkulungwa_png.png", width=350)
+    else:
+        st.markdown("<h1 style='color:#00FF00; font-family:Courier Prime;'>MKULUNGWA AI</h1>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -153,7 +144,7 @@ if not st.session_state.auth:
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # 3. LEAGUE CONFIG
+    # 3. LEAGUE CONFIG & ANALYSIS (Full Logic)
     LEAGUE_MAP = {
         "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
         "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
@@ -169,8 +160,9 @@ else:
         "GREECE": {"Super League": "G1"}
     }
 
-    # --- SIDEBAR (ADMIN CONTROL) ---
     with st.sidebar:
+        if os.path.exists("mkulungwa_png.png"):
+            st.image("mkulungwa_png.png", width=150)
         st.markdown(f"### 👤 {st.session_state.user.upper()}")
         if st.button("🚪 LOGOUT"): st.session_state.auth = False; st.rerun()
         
@@ -184,7 +176,6 @@ else:
                 for cat, sub in LEAGUE_MAP.items():
                     if cat != "UEFA / EUROPA / CONFERENCE":
                         for n, c in sub.items(): leagues.append((n, c))
-                
                 p_bar = st.progress(0, text="Syncing data...")
                 for i, (n, c) in enumerate(leagues):
                     try:
@@ -199,7 +190,6 @@ else:
                     pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
                     st.success("✅ GLOBAL UPDATE COMPLETE!")
 
-            st.markdown("---")
             if st.checkbox("👥 MANAGE USERS"):
                 conn = sqlite3.connect(DB_NAME)
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
@@ -217,7 +207,7 @@ else:
                 conn.close()
 
     # --- 4. DASHBOARD ---
-    st.markdown("<h1>MKULUNGWA AI V18.6</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>MKULUNGWA AI V18.7</h1>", unsafe_allow_html=True)
     
     cat = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
     if cat == "UEFA / EUROPA / CONFERENCE": l_code = "UEFA_ALL"
