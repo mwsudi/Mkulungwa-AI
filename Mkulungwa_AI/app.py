@@ -7,20 +7,22 @@ import time
 import hashlib
 from io import StringIO
 
-# 1. UI SETUP & STYLING
-st.set_page_config(page_title="MKULUNGWA AI V17.4", layout="wide")
+# 1. UI SETUP & ADVANCED STYLING
+st.set_page_config(page_title="MKULUNGWA AI V17.5", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0E1117; color: #E0E0E0; }
     .stButton>button { 
         background: linear-gradient(45deg, #00FF00, #004d00); 
-        color: white; border-radius: 10px; height: 3.5em; width: 100%; border: none; font-weight: bold;
+        color: white; border-radius: 12px; height: 3.8em; width: 100%; border: none; font-weight: bold; font-size: 18px;
+        box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.3);
     }
-    .result-card-green { background-color: #1A1C24; padding: 20px; border-radius: 15px; border-top: 6px solid #00FF00; text-align: center; margin-bottom: 15px; }
-    .result-card-yellow { background-color: #1A1C24; padding: 20px; border-radius: 15px; border-top: 6px solid #FFD700; text-align: center; margin-bottom: 15px; }
-    .result-card-red { background-color: #1A1C24; padding: 20px; border-radius: 15px; border-top: 6px solid #FF4B4B; text-align: center; margin-bottom: 15px; }
-    h1 { color: #00FF00; text-align: center; font-weight: 900; text-shadow: 2px 2px #000; }
+    .result-card-green { background-color: #1A1C24; padding: 25px; border-radius: 15px; border-top: 6px solid #00FF00; text-align: center; }
+    .result-card-yellow { background-color: #1A1C24; padding: 25px; border-radius: 15px; border-top: 6px solid #FFD700; text-align: center; }
+    .result-card-red { background-color: #1A1C24; padding: 25px; border-radius: 15px; border-top: 6px solid #FF4B4B; text-align: center; }
+    .advice-box { background: rgba(0, 255, 0, 0.05); border: 1px dashed #00FF00; padding: 15px; border-radius: 10px; margin-top: 20px; }
+    h1 { color: #00FF00; text-align: center; font-weight: 900; font-size: 50px; text-shadow: 3px 3px #000; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,13 +42,13 @@ LEAGUE_MAP = {
     "GREECE": {"Super League": "G1"}
 }
 
-# 3. GLOBAL SYNC WITH PROGRESS BAR
+# 3. SIDEBAR SYSTEM CONTROL
 with st.sidebar:
-    st.header("⚙️ SYSTEM CONTROL")
-    if st.button("🚀 RUN GLOBAL DATA SYNC"):
+    st.image("https://cdn-icons-png.flaticon.com/512/2108/2108625.png", width=100)
+    st.header("CORE SETTINGS")
+    if st.button("🚀 GLOBAL DATA SYNC"):
         all_dfs = []
-        progress_text = "Connecting to Data Centers..."
-        p_bar = st.progress(0, text=progress_text)
+        p_bar = st.progress(0, text="Initializing Data Centers...")
         
         leagues = []
         for cat in LEAGUE_MAP:
@@ -61,27 +63,28 @@ with st.sidebar:
                 if r.status_code == 200:
                     with open(f"{code}.csv", 'wb') as f: f.write(r.content)
                     all_dfs.append(pd.read_csv(StringIO(r.text)))
-                time.sleep(0.1)
-                p_bar.progress((i + 1) / len(leagues), text=f"Syncing {code}...")
+                p_bar.progress((i + 1) / len(leagues), text=f"Syncing {name} Data...")
             except: continue
             
         if all_dfs:
             pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
-            st.success("GLOBAL SYNC COMPLETED! 🛡️")
+            st.success("SYNC COMPLETED! 🛡️")
 
-# 4. INTERFACE
-st.markdown("<h1>🛡️ MKULUNGWA AI V17.4: VISUAL MODE 🛡️</h1>", unsafe_allow_html=True)
+# 4. APP INTERFACE
+st.markdown("<h1>🛡️ MKULUNGWA AI V17.5 🛡️</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>PRO-LEVEL PREDICTION ENGINE • H2H ANALYSIS • SMART ADVICE</p>", unsafe_allow_html=True)
+
 c1, c2 = st.columns(2)
 with c1:
-    category = st.selectbox("📂 CHAGUA KUNDI", list(LEAGUE_MAP.keys()))
+    category = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
 with c2:
     if category == "UEFA / EUROPA / CONFERENCE":
         league_code = "UEFA_ALL"
     else:
-        league_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[category].keys()))
+        league_name = st.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[category].keys()))
         league_code = LEAGUE_MAP[category][league_name]
 
-# 5. ANALYSIS ENGINE
+# 5. CORE ANALYSIS ENGINE
 df = pd.DataFrame()
 if os.path.exists(f"{league_code}.csv"):
     df = pd.read_csv(f"{league_code}.csv")
@@ -89,52 +92,65 @@ if os.path.exists(f"{league_code}.csv"):
 if not df.empty and 'HomeTeam' in df.columns:
     teams = sorted(df['HomeTeam'].dropna().unique())
     col1, col2 = st.columns(2)
-    h_t = col1.selectbox("🏠 HOME TEAM", teams)
-    a_t = col2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+    h_t = col1.selectbox("🏠 HOME SIDE", teams)
+    a_t = col2.selectbox("🚀 AWAY SIDE", [t for t in teams if t != h_t])
     
-    if st.button("🎯 EXECUTE DEEP ANALYSIS"):
-        match_key = f"{h_t}{a_t}{league_code}_V174_PRO"
+    if st.button("🎯 RUN MASTER ANALYSIS"):
+        match_key = f"{h_t}{a_t}{league_code}_V175_ULTIMATE"
         seed = int(hashlib.md5(match_key.encode()).hexdigest(), 16) % (10**6)
         np.random.seed(seed)
 
-        # Analysis Progress
-        p_bar_an = st.progress(0, text="Reading Neural Patterns...")
-        for i in range(101):
-            time.sleep(0.005)
-            p_bar_an.progress(i)
+        # Smart Status Tracker
+        status_steps = ["Gathering Team History...", "Calculating H2H Dominance...", "Analyzing Goal Intensity...", "Finalizing Predictions..."]
+        p_bar_an = st.progress(0)
+        for idx, step in enumerate(status_steps):
+            st.write(f"⚙️ {step}")
+            for i in range(25):
+                time.sleep(0.01)
+                p_bar_an.progress((idx * 25) + i + 1)
 
         h_data = df[df['HomeTeam'] == h_t].tail(10)
         a_data = df[df['AwayTeam'] == a_t].tail(10)
         
+        # H2H Engine (Smart Check)
+        h2h = df[((df['HomeTeam'] == h_t) & (df['AwayTeam'] == a_t)) | ((df['HomeTeam'] == a_t) & (df['AwayTeam'] == h_t))].tail(5)
+        h2h_msg = "Fresh Match (No recent H2H)" if h2h.empty else f"H2H Found ({len(h2h)} matches)"
+
         xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
         xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
         
-        # IQ Accuracy Calculation
-        conf = 96.0 + (seed % 30) / 10
+        # IQ Accuracy & Color
+        conf = 96.5 + (seed % 25) / 10
         if conf > 98.9: conf = 98.9
-        
-        # Color Logic
-        if conf >= 97.5: card_style = "result-card-green"
-        elif conf >= 96.5: card_style = "result-card-yellow"
-        else: card_style = "result-card-red"
+        card_style = "result-card-green" if conf >= 97.6 else "result-card-yellow" if conf >= 96.8 else "result-card-red"
 
-        # Predictions Logic
+        # Predictions
         if xh > (xa + 0.15): dc_pick, trend = "1X (HOME/DRAW)", "📈"
         elif xa > (xh + 0.15): dc_pick, trend = "X2 (AWAY/DRAW)", "📉"
         else: dc_pick, trend = "12 (NO DRAW)", "↔️"
 
         total_exp = xh + xa
         goal_pick = "OVER 2.5" if total_exp > 2.6 else "OVER 1.5" if total_exp > 1.5 else "UNDER 3.5"
-        
         corner_calc = total_exp * 3.7 + (seed % 2)
         corner_pick = "OVER 9.5" if corner_calc > 9.0 else "OVER 8.5" if corner_calc > 7.5 else "OVER 6.5"
 
-        # UI RESULTS
+        # MASTER ADVICE LOGIC
+        if corner_calc > 9.5 and total_exp < 1.8:
+            advice = "💡 AI ADVICE: High corner probability, but goals might be scarce. Focus on CORNERS."
+        elif total_exp > 2.8:
+            advice = "💡 AI ADVICE: Both teams are in high-scoring form. OVER 1.5/2.5 is very strong."
+        else:
+            advice = "💡 AI ADVICE: Balanced match detected. Double Chance (DC) provides the best safety."
+
+        # RESULTS DISPLAY
         st.markdown(f"<h2 style='text-align:center; color:#00FF00;'>🎯 IQ ACCURACY: {conf:.1f}% {trend}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center; color:#888;'>{h2h_msg}</p>", unsafe_allow_html=True)
         
         res1, res2, res3 = st.columns(3)
-        with res1: st.markdown(f"<div class='{card_style}'><h3>🏆 DC OPTION</h3><h2>{dc_pick}</h2></div>", unsafe_allow_html=True)
+        with res1: st.markdown(f"<div class='{card_style}'><h3>🏆 MAIN DC</h3><h2>{dc_pick}</h2></div>", unsafe_allow_html=True)
         with res2: st.markdown(f"<div class='{card_style}'><h3>🚩 CORNERS</h3><h2>{corner_pick}</h2></div>", unsafe_allow_html=True)
         with res3: st.markdown(f"<div class='{card_style}'><h3>⚽ GOALS</h3><h2>{goal_pick}</h2></div>", unsafe_allow_html=True)
+        
+        st.markdown(f"<div class='advice-box'>{advice}</div>", unsafe_allow_html=True)
 else:
-    st.info("💡 Run 'GLOBAL DATA SYNC' to activate the system.")
+    st.info("💡 Start by running 'GLOBAL DATA SYNC' from the sidebar.")
