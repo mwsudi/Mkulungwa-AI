@@ -25,9 +25,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MASTER DATABASE - ALL 20 ELITE NATIONS
+# 2. STABLE LEAGUE DATABASE (TOP 9 ELITE)
 LEAGUE_MAP = {
-    "UEFA / EUROPA / CONFERENCE": {"ELITE_MODE": "UEFA_ALL"},
+    "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
     "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
     "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
     "ITALY": {"Serie A": "I1", "Serie B": "I2"},
@@ -37,50 +37,31 @@ LEAGUE_MAP = {
     "PORTUGAL": {"Primeira Liga": "P1"},
     "TURKEY": {"Super Lig": "T1"},
     "BELGIUM": {"Pro League": "B1"},
-    "AUSTRIA": {"Bundesliga": "AUT"},
     "SCOTLAND": {"Premiership": "SC0"},
-    "SWITZERLAND": {"Super League": "SWZ"},
-    "DENMARK": {"Superliga": "DNK"},
-    "NORWAY": {"Eliteserien": "NOR"},
-    "SWEDEN": {"Allsvenskan": "SWE"},
-    "CZECH REPUBLIC": {"First League": "CZE"},
-    "GREECE": {"Super League": "G1"},
-    "UKRAINE": {"Premier League": "UKR"},
-    "CROATIA": {"First League": "CRO"}
+    "GREECE": {"Super League": "G1"}
 }
 
-# 3. SIDEBAR SYNC ENGINE
+# 3. SYNC ENGINE (FAST & STABLE)
 with st.sidebar:
     st.header("NEURAL DATA SYNC")
     if st.button("RUN GLOBAL DATA SYNC"):
-        with st.spinner("Connecting to European Servers..."):
+        with st.spinner("Syncing Stable Elite Leagues..."):
             all_dfs = []
-            codes_to_pull = []
             for cat in LEAGUE_MAP:
                 if cat != "UEFA / EUROPA / CONFERENCE":
                     for name, code in LEAGUE_MAP[cat].items():
-                        codes_to_pull.append(code)
-            
-            p_sync = st.progress(0)
-            for i, code in enumerate(codes_to_pull):
-                try:
-                    url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
-                    r = requests.get(url, timeout=10)
-                    if r.status_code == 200:
-                        df_temp = pd.read_csv(StringIO(r.text))
-                        df_temp.to_csv(f"{code}.csv", index=False)
-                        all_dfs.append(df_temp)
-                except:
-                    continue
-                p_sync.progress((i + 1) / len(codes_to_pull))
-            
+                        try:
+                            url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
+                            r = requests.get(url, timeout=10)
+                            if r.status_code == 200:
+                                with open(f"{code}.csv", 'wb') as f: f.write(r.content)
+                                all_dfs.append(pd.read_csv(StringIO(r.text)))
+                        except: continue
             if all_dfs:
                 pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
-                st.success("SYNC SUCCESSFUL!")
-            else:
-                st.error("Sync Failed. Check Internet.")
+                st.success("Sync Done! 9 Elite Nations Online.")
 
-# 4. INTERFACE
+# 4. APP INTERFACE
 st.markdown("<h1>🛡️ MKULUNGWA AI V17.3 🛡️</h1>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
@@ -95,10 +76,7 @@ with c2:
 # 5. CORE ANALYSIS
 df = pd.DataFrame()
 if os.path.exists(f"{league_code}.csv"):
-    try:
-        df = pd.read_csv(f"{league_code}.csv")
-    except:
-        df = pd.DataFrame()
+    df = pd.read_csv(f"{league_code}.csv")
 
 if not df.empty and 'HomeTeam' in df.columns:
     teams = sorted(df['HomeTeam'].dropna().unique())
@@ -106,8 +84,8 @@ if not df.empty and 'HomeTeam' in df.columns:
     h_t = col1.selectbox("🏠 HOME TEAM", teams)
     a_t = col2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
     
-    if st.button("🎯 EXECUTE ANALYSIS"):
-        match_key = f"{h_t}{a_t}{league_code}_STABLE"
+    if st.button("🎯 EXECUTE SMART ANALYSIS"):
+        match_key = f"{h_t}{a_t}{league_code}_V173"
         seed = int(hashlib.md5(match_key.encode()).hexdigest(), 16) % (10**6)
         np.random.seed(seed)
 
@@ -122,19 +100,19 @@ if not df.empty and 'HomeTeam' in df.columns:
         xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
         xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
         
-        # DC Logic
-        if xh > (xa + 0.1): dc_pick = "1X (HOME/DRAW)"
-        elif xa > (xh + 0.1): dc_pick = "X2 (AWAY/DRAW)"
+        # Tactical DC
+        if xh > (xa + 0.15): dc_pick = "1X (HOME/DRAW)"
+        elif xa > (xh + 0.15): dc_pick = "X2 (AWAY/DRAW)"
         else: dc_pick = "12 (NO DRAW)"
 
-        # Goals
+        # Goals (1.5+)
         total_exp = xh + xa
-        if total_exp > 2.6: goal_pick = "OVER 2.5"
-        elif total_exp > 1.4: goal_pick = "OVER 1.5"
+        if total_exp > 2.7: goal_pick = "OVER 2.5"
+        elif total_exp > 1.6: goal_pick = "OVER 1.5"
         else: goal_pick = "UNDER 3.5"
 
-        # Corners
-        corner_calc = total_exp * 3.9 + (seed % 2)
+        # Corners (6.5+)
+        corner_calc = total_exp * 3.8 + (seed % 2)
         if corner_calc > 9.5: corner_pick = "OVER 9.5"
         elif corner_calc > 8.5: corner_pick = "OVER 8.5"
         else: corner_pick = "OVER 6.5"
@@ -146,4 +124,4 @@ if not df.empty and 'HomeTeam' in df.columns:
         with res2: st.markdown(f"<div class='result-card'><h3>🚩 KONA</h3><h2>{corner_pick}</h2></div>", unsafe_allow_html=True)
         with res3: st.markdown(f"<div class='result-card'><h3>⚽ GOALS</h3><h2>{goal_pick}</h2></div>", unsafe_allow_html=True)
 else:
-    st.info("💡 Data za ligi hii hazijapatikana. Tafadhali bonyeza 'RUN GLOBAL DATA SYNC'.")
+    st.info("💡 Bonyeza 'RUN GLOBAL DATA SYNC' kuanza.")
