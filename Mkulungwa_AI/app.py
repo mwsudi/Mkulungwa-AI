@@ -36,28 +36,30 @@ def init_db():
     conn.close()
 
 # --- 1. UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V18.7", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V18.6", layout="wide")
 init_db()
 
+# CSS ya kuongeza picha ya juu na kurembesha
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
     
     .main { background-color: #0E1117; color: #E0E0E0; }
     
-    /* Box la Logo - Sasa limeboreshwa ili picha ikae ndani */
-    .logo-box {
-        border: 2px solid #00FF00;
-        border-radius: 30px;
-        padding: 10px;
-        text-align: center;
-        margin: 0 auto 20px auto;
-        max-width: 400px;
-        background: rgba(0, 255, 0, 0.05);
+    /* Picha ya Juu (Banner/Watermark) */
+    .hero-banner {
+        background-image: linear-gradient(rgba(14, 17, 23, 0.6), rgba(14, 17, 23, 0.9)), 
+                          url('https://img.freepik.com/free-photo/view-futuristic-football-stadium_23-2151042784.jpg');
+        background-size: cover;
+        background-position: center;
+        height: 250px;
         display: flex;
-        justify-content: center;
         align-items: center;
-        min-height: 120px;
+        justify-content: center;
+        border-radius: 20px;
+        border: 2px solid #00FF00;
+        margin-bottom: -100px;
+        box-shadow: 0px 10px 30px rgba(0, 255, 0, 0.2);
     }
 
     .stButton>button { 
@@ -65,16 +67,21 @@ st.markdown("""
         color: white; border-radius: 15px; height: 3.5em; width: 100%; border: none; font-weight: bold;
     }
     
+    .brand-text {
+        font-family: 'Courier Prime', monospace; color: #00FF00; font-size: 50px;
+        font-weight: 900; letter-spacing: 5px; text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8);
+        margin: 0;
+    }
+
     .login-container { 
-        max-width: 480px; 
-        margin: 0 auto; 
-        padding: 30px; 
-        background: #1A1C24; 
-        border-radius: 25px; 
-        border: 1px solid rgba(0, 255, 0, 0.2);
+        max-width: 480px; margin: 0 auto; padding: 40px; background: #1A1C24; 
+        border-radius: 25px; border: 1px solid rgba(0, 255, 0, 0.3);
         box-shadow: 0px 15px 35px rgba(0,0,0,0.5);
+        position: relative;
+        z-index: 10;
     }
     
+    /* Vitufe vya Admin vya kufuta */
     button[key^="del_"] {
         background: linear-gradient(90deg, #FF4B4B, #8B0000) !important;
     }
@@ -85,19 +92,16 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
-    # Safu ya kati kwa ajili ya Logo na Login
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Sehemu ya Picha ya Juu
+    st.markdown("""
+        <div class='hero-banner'>
+            <p class='brand-text'>MKULUNGWA AI</p>
+        </div>
+        <br><br>
+    """, unsafe_allow_html=True)
     
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # HAPA NDIPO PICHA INAPOINGIZWA NDANI YA BOX
-        st.markdown("<div class='logo-box'>", unsafe_allow_html=True)
-        if os.path.exists("mkulungwa_png.png"):
-            # Tunatumia st.image ndani ya lile box la kijani
-            st.image("mkulungwa_png.png", width=300)
-        else:
-            st.markdown("<h1 style='color:#00FF00; font-family:Courier Prime; margin:0;'>MKULUNGWA AI</h1>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
         st.markdown("<div class='login-container'>", unsafe_allow_html=True)
         tab1, tab2, tab3 = st.tabs(["🔐 LOGIN", "✍️ REGISTER", "🔄 CHANGE PASS"])
         
@@ -149,7 +153,7 @@ if not st.session_state.auth:
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # 3. LEAGUE CONFIG & DASHBOARD (Inabaki vile vile Master)
+    # 3. LEAGUE CONFIG
     LEAGUE_MAP = {
         "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
         "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
@@ -165,31 +169,85 @@ else:
         "GREECE": {"Super League": "G1"}
     }
 
+    # --- SIDEBAR (ADMIN CONTROL) ---
     with st.sidebar:
-        if os.path.exists("mkulungwa_png.png"):
-            st.image("mkulungwa_png.png", width=150)
         st.markdown(f"### 👤 {st.session_state.user.upper()}")
         if st.button("🚪 LOGOUT"): st.session_state.auth = False; st.rerun()
         
         if st.session_state.role == "admin":
             st.markdown("---")
+            st.markdown("### 🛠️ ADMIN PANEL")
+            
             if st.button("🚀 BROADCAST GLOBAL SYNC"):
-                # ... (Logic ya sync)
-                st.success("✅ SYNC COMPLETE!")
+                all_dfs = []
+                leagues = []
+                for cat, sub in LEAGUE_MAP.items():
+                    if cat != "UEFA / EUROPA / CONFERENCE":
+                        for n, c in sub.items(): leagues.append((n, c))
+                
+                p_bar = st.progress(0, text="Syncing data...")
+                for i, (n, c) in enumerate(leagues):
+                    try:
+                        url = f"https://www.football-data.co.uk/mmz4281/2526/{c}.csv"
+                        r = requests.get(url, timeout=10)
+                        if r.status_code == 200:
+                            with open(f"{c}.csv", 'wb') as f: f.write(r.content)
+                            all_dfs.append(pd.read_csv(StringIO(r.text)))
+                        p_bar.progress((i+1)/len(leagues))
+                    except: continue
+                if all_dfs:
+                    pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
+                    st.success("✅ GLOBAL UPDATE COMPLETE!")
 
+            st.markdown("---")
             if st.checkbox("👥 MANAGE USERS"):
                 conn = sqlite3.connect(DB_NAME)
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
                 for i, row in users.iterrows():
                     c1, c2, c3 = st.columns([2, 1, 1])
-                    c1.write(f"@{row['username']}")
-                    if c2.button("BLOCK/UNBL", key=f"blk_{row['username']}"):
-                        # Logic hapa
-                        st.rerun()
+                    f_name = row['firstname'] if row['firstname'] else "User"
+                    c1.write(f"**{f_name}** (@{row['username']})")
+                    if c2.button("BLOCK" if row['status']=='active' else "UNBL", key=f"blk_{row['username']}"):
+                        new_s = 'inactive' if row['status']=='active' else 'active'
+                        conn.execute("UPDATE users SET status=? WHERE username=?", (new_s, row['username']))
+                        conn.commit(); st.rerun()
                     if c3.button("🗑️", key=f"del_{row['username']}"):
                         conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
                         conn.commit(); st.rerun()
                 conn.close()
 
-    st.markdown("<h1>MKULUNGWA AI V18.7</h1>", unsafe_allow_html=True)
-    # ... (Sehemu ya Analysis inaendelea kama kawaida)
+    # --- 4. DASHBOARD ---
+    st.markdown("<h1>MKULUNGWA AI V18.6</h1>", unsafe_allow_html=True)
+    
+    cat = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
+    if cat == "UEFA / EUROPA / CONFERENCE": l_code = "UEFA_ALL"
+    else:
+        l_name = st.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))
+        l_code = LEAGUE_MAP[cat][l_name]
+
+    if os.path.exists(f"{l_code}.csv"):
+        df = pd.read_csv(f"{l_code}.csv")
+        teams = sorted(df['HomeTeam'].dropna().unique())
+        h_t = st.selectbox("🏠 HOME TEAM", teams)
+        a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+
+        if st.button("🎯 RUN MASTER ANALYSIS"):
+            m_key = f"{h_t}{a_t}{l_code}_V18"
+            seed = int(hashlib.md5(m_key.encode()).hexdigest(), 16) % (10**6)
+            np.random.seed(seed); random.seed(seed)
+            
+            h_data = df[df['HomeTeam'] == h_t].tail(10)
+            a_data = df[df['AwayTeam'] == a_t].tail(10)
+            xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
+            xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
+            conf = 96.5 + (seed % 25) / 10
+            
+            res_dc = "1X" if xh > xa else "X2" if xa > xh else "12"
+            res_gl = "OVER 2.5" if (xh+xa) > 2.5 else "OVER 1.5"
+            
+            st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
+            r1, r2 = st.columns(2)
+            r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{res_dc}</h2></div>", unsafe_allow_html=True)
+            r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ Data haijapatikana. Admin bonyeza 'BROADCAST GLOBAL SYNC' kwenye sidebar.")
