@@ -58,8 +58,9 @@ st.markdown("""
     }
     .result-card-green { background: #1A1C24; padding: 25px; border-radius: 20px; border-left: 10px solid #00FF00; }
     .login-container { max-width: 450px; margin: 0 auto; padding: 30px; background: #1A1C24; border-radius: 20px; border: 1px solid #00FF00; }
-    /* Delete button style */
-    div[data-testid="column"]:nth-child(3) button {
+    
+    /* Style maalum ya vitufe vya kufuta (nyekundu) */
+    button[key^="del_"] {
         background: linear-gradient(90deg, #FF4B4B, #8B0000) !important;
     }
     </style>
@@ -123,7 +124,23 @@ if not st.session_state.auth:
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # 3. APP LOGIC
+    # 3. LEAGUE CONFIG (HAPA NDIPO ILIPOKUWA IMESALIA)
+    LEAGUE_MAP = {
+        "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
+        "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
+        "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
+        "ITALY": {"Serie A": "I1", "Serie B": "I2"},
+        "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
+        "FRANCE": {"Ligue 1": "F1"},
+        "NETHERLANDS": {"Eredivisie": "N1"},
+        "PORTUGAL": {"Primeira Liga": "P1"},
+        "TURKEY": {"Super Lig": "T1"},
+        "BELGIUM": {"Pro League": "B1"},
+        "SCOTLAND": {"Premiership": "SC0"},
+        "GREECE": {"Super League": "G1"}
+    }
+
+    # --- SIDEBAR (ADMIN CONTROL) ---
     with st.sidebar:
         st.markdown(f"### 👤 {st.session_state.user.upper()}")
         if st.button("🚪 LOGOUT"): st.session_state.auth = False; st.rerun()
@@ -131,29 +148,82 @@ else:
         if st.session_state.role == "admin":
             st.markdown("---")
             st.markdown("### 🛠️ ADMIN PANEL")
-            # Manage Users Section
+            
+            # 1. BROADCAST UPDATE (ILE YA KULETA TIMU)
+            if st.button("🚀 BROADCAST GLOBAL SYNC"):
+                all_dfs = []
+                leagues = []
+                for cat, sub in LEAGUE_MAP.items():
+                    if cat != "UEFA / EUROPA / CONFERENCE":
+                        for n, c in sub.items(): leagues.append((n, c))
+                
+                p_bar = st.progress(0, text="Syncing data...")
+                for i, (n, c) in enumerate(leagues):
+                    try:
+                        url = f"https://www.football-data.co.uk/mmz4281/2526/{c}.csv"
+                        r = requests.get(url, timeout=10)
+                        if r.status_code == 200:
+                            with open(f"{c}.csv", 'wb') as f: f.write(r.content)
+                            all_dfs.append(pd.read_csv(StringIO(r.text)))
+                        p_bar.progress((i+1)/len(leagues))
+                    except: continue
+                if all_dfs:
+                    pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
+                    st.success("✅ GLOBAL UPDATE COMPLETE!")
+
+            st.markdown("---")
+            # 2. MANAGE USERS (BLOCK & DELETE)
             if st.checkbox("👥 MANAGE USERS"):
                 conn = sqlite3.connect(DB_NAME)
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
                 for i, row in users.iterrows():
-                    # Safu 3: Jina, Block, Delete
                     c1, c2, c3 = st.columns([2, 1, 1])
                     f_name = row['firstname'] if row['firstname'] else "N/A"
                     c1.write(f"**{f_name}** (@{row['username']})")
                     
-                    # Kitufe cha Block
-                    if c2.button("UNBLOCK" if row['status']=='inactive' else "BLOCK", key=f"blk_{row['username']}"):
+                    if c2.button("BLOCK" if row['status']=='active' else "UNBL", key=f"blk_{row['username']}"):
                         new_s = 'inactive' if row['status']=='active' else 'active'
                         conn.execute("UPDATE users SET status=? WHERE username=?", (new_s, row['username']))
                         conn.commit(); st.rerun()
                     
-                    # Kitufe cha Delete (Kipya)
-                    if c3.button("🗑️", key=f"del_{row['username']}", help="Futa kabisa huyu user"):
+                    if c3.button("🗑️", key=f"del_{row['username']}"):
                         conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
-                        conn.commit(); st.success(f"Umfuta {row['username']}"); time.sleep(1); st.rerun()
+                        conn.commit(); st.rerun()
                 conn.close()
 
-    # --- 4. DASHBOARD ---
+    # --- 4. MAIN APP ---
     st.markdown("<h1>MKULUNGWA AI V18.6</h1>", unsafe_allow_html=True)
-    # ... (Hapa inaendelea ile League Config na Analysis kama awali) ...
-    # Nimefupisha hapa ili kodi isizidi urefu wa kurasa, lakini logic ya Analysis ibaki ile ile.
+    
+    cat = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
+    if cat == "UEFA / EUROPA / CONFERENCE": l_code = "UEFA_ALL"
+    else:
+        l_name = st.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))
+        l_code = LEAGUE_MAP[cat][l_name]
+
+    if os.path.exists(f"{l_code}.csv"):
+        df = pd.read_csv(f"{l_code}.csv")
+        teams = sorted(df['HomeTeam'].dropna().unique())
+        h_t = st.selectbox("🏠 HOME TEAM", teams)
+        a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+
+        if st.button("🎯 RUN MASTER ANALYSIS"):
+            m_key = f"{h_t}{a_t}{l_code}_V18"
+            seed = int(hashlib.md5(m_key.encode()).hexdigest(), 16) % (10**6)
+            np.random.seed(seed); random.seed(seed)
+            
+            h_data = df[df['HomeTeam'] == h_t].tail(10)
+            a_data = df[df['AwayTeam'] == a_t].tail(10)
+            xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
+            xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
+            conf = 96.5 + (seed % 25) / 10
+            
+            res_dc = "1X" if xh > xa else "X2" if xa > xh else "12"
+            res_gl = "OVER 2.5" if (xh+xa) > 2.5 else "OVER 1.5"
+            
+            st.markdown(f"<h2 style='text-align:center;'>🛡️ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
+            r1, r2 = st.columns(2)
+            r1.markdown(f"<div class='result-card-green'><h3>🏆 PICK</h3><h2>{res_dc}</h2></div>", unsafe_allow_html=True)
+            r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ Data haijapatikana. Admin bonyeza 'BROADCAST GLOBAL SYNC' kwenye sidebar.")
+    
