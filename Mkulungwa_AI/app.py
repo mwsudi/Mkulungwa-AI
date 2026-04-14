@@ -19,7 +19,6 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users 
                  (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT)''')
     
-    # Auto-migration kwa ajili ya majina
     cursor = conn.execute('PRAGMA table_info(users)')
     columns = [column[1] for column in cursor.fetchall()]
     if 'firstname' not in columns:
@@ -40,26 +39,49 @@ def init_db():
 st.set_page_config(page_title="MKULUNGWA AI V18.6", layout="wide")
 init_db()
 
+# CSS ya kuongeza picha ya juu na kurembesha
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
+    
     .main { background-color: #0E1117; color: #E0E0E0; }
+    
+    /* Picha ya Juu (Banner/Watermark) */
+    .hero-banner {
+        background-image: linear-gradient(rgba(14, 17, 23, 0.6), rgba(14, 17, 23, 0.9)), 
+                          url('https://img.freepik.com/free-photo/view-futuristic-football-stadium_23-2151042784.jpg');
+        background-size: cover;
+        background-position: center;
+        height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        border: 2px solid #00FF00;
+        margin-bottom: -100px;
+        box-shadow: 0px 10px 30px rgba(0, 255, 0, 0.2);
+    }
+
     .stButton>button { 
         background: linear-gradient(90deg, #00FF00, #008000); 
         color: white; border-radius: 15px; height: 3.5em; width: 100%; border: none; font-weight: bold;
     }
-    .brand-box {
-        border: 2px solid #00FF00; border-radius: 50px; padding: 15px; text-align: center;
-        margin-bottom: 20px; background: rgba(0, 255, 0, 0.03);
-    }
-    .brand-text {
-        font-family: 'Courier Prime', monospace; color: #00FF00; font-size: 40px;
-        font-weight: 900; letter-spacing: 3px; text-shadow: 2px 2px 8px rgba(0, 255, 0, 0.4);
-    }
-    .result-card-green { background: #1A1C24; padding: 25px; border-radius: 20px; border-left: 10px solid #00FF00; }
-    .login-container { max-width: 450px; margin: 0 auto; padding: 30px; background: #1A1C24; border-radius: 20px; border: 1px solid #00FF00; }
     
-    /* Style maalum ya vitufe vya kufuta (nyekundu) */
+    .brand-text {
+        font-family: 'Courier Prime', monospace; color: #00FF00; font-size: 50px;
+        font-weight: 900; letter-spacing: 5px; text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8);
+        margin: 0;
+    }
+
+    .login-container { 
+        max-width: 480px; margin: 0 auto; padding: 40px; background: #1A1C24; 
+        border-radius: 25px; border: 1px solid rgba(0, 255, 0, 0.3);
+        box-shadow: 0px 15px 35px rgba(0,0,0,0.5);
+        position: relative;
+        z-index: 10;
+    }
+    
+    /* Vitufe vya Admin vya kufuta */
     button[key^="del_"] {
         background: linear-gradient(90deg, #FF4B4B, #8B0000) !important;
     }
@@ -70,11 +92,18 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
+    # Sehemu ya Picha ya Juu
+    st.markdown("""
+        <div class='hero-banner'>
+            <p class='brand-text'>MKULUNGWA AI</p>
+        </div>
+        <br><br>
+    """, unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<div class='brand-box'><p class='brand-text'>🛡️ MKULUNGWA AI</p></div>", unsafe_allow_html=True)
         st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-        tab1, tab2, tab3 = st.tabs(["LOGIN", "REGISTER", "CHANGE PASS"])
+        tab1, tab2, tab3 = st.tabs(["🔐 LOGIN", "✍️ REGISTER", "🔄 CHANGE PASS"])
         
         with tab1:
             u = st.text_input("Username", key="l_u")
@@ -124,7 +153,7 @@ if not st.session_state.auth:
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-    # 3. LEAGUE CONFIG (HAPA NDIPO ILIPOKUWA IMESALIA)
+    # 3. LEAGUE CONFIG
     LEAGUE_MAP = {
         "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
         "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
@@ -149,7 +178,6 @@ else:
             st.markdown("---")
             st.markdown("### 🛠️ ADMIN PANEL")
             
-            # 1. BROADCAST UPDATE (ILE YA KULETA TIMU)
             if st.button("🚀 BROADCAST GLOBAL SYNC"):
                 all_dfs = []
                 leagues = []
@@ -172,26 +200,23 @@ else:
                     st.success("✅ GLOBAL UPDATE COMPLETE!")
 
             st.markdown("---")
-            # 2. MANAGE USERS (BLOCK & DELETE)
             if st.checkbox("👥 MANAGE USERS"):
                 conn = sqlite3.connect(DB_NAME)
                 users = pd.read_sql_query("SELECT username, firstname, lastname, status FROM users WHERE role='user'", conn)
                 for i, row in users.iterrows():
                     c1, c2, c3 = st.columns([2, 1, 1])
-                    f_name = row['firstname'] if row['firstname'] else "N/A"
+                    f_name = row['firstname'] if row['firstname'] else "User"
                     c1.write(f"**{f_name}** (@{row['username']})")
-                    
                     if c2.button("BLOCK" if row['status']=='active' else "UNBL", key=f"blk_{row['username']}"):
                         new_s = 'inactive' if row['status']=='active' else 'active'
                         conn.execute("UPDATE users SET status=? WHERE username=?", (new_s, row['username']))
                         conn.commit(); st.rerun()
-                    
                     if c3.button("🗑️", key=f"del_{row['username']}"):
                         conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
                         conn.commit(); st.rerun()
                 conn.close()
 
-    # --- 4. MAIN APP ---
+    # --- 4. DASHBOARD ---
     st.markdown("<h1>MKULUNGWA AI V18.6</h1>", unsafe_allow_html=True)
     
     cat = st.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
@@ -226,4 +251,3 @@ else:
             r2.markdown(f"<div class='result-card-green'><h3>⚽ GOALS</h3><h2>{res_gl}</h2></div>", unsafe_allow_html=True)
     else:
         st.warning("⚠️ Data haijapatikana. Admin bonyeza 'BROADCAST GLOBAL SYNC' kwenye sidebar.")
-    
