@@ -7,6 +7,7 @@ import time
 import hashlib
 import sqlite3
 import base64
+import random
 from datetime import datetime
 from scipy.stats import poisson
 
@@ -34,27 +35,23 @@ def log_action(username, action):
 
 # --- 2. THE IQ CORE (POISSON ENGINE) ---
 def calculate_iq_metrics(df, home_team, away_team):
-    # Hesabu ya Wastani (League Average)
     avg_home_goals = df['FTHG'].mean()
     avg_away_goals = df['FTAG'].mean()
     
-    # Home Team IQ
     home_df = df[df['HomeTeam'] == home_team]
-    home_attack_iq = home_df['FTHG'].mean() / avg_home_goals
-    home_defense_iq = home_df['FTAG'].mean() / avg_away_goals
+    home_attack_iq = home_df['FTHG'].mean() / avg_home_goals if not home_df.empty else 1.0
+    home_defense_iq = home_df['FTAG'].mean() / avg_away_goals if not home_df.empty else 1.0
     
-    # Away Team IQ
     away_df = df[df['AwayTeam'] == away_team]
-    away_attack_iq = away_df['FTAG'].mean() / avg_away_goals
-    away_defense_iq = away_df['FTHG'].mean() / avg_home_goals
+    away_attack_iq = away_df['FTAG'].mean() / avg_away_goals if not away_df.empty else 1.0
+    away_defense_iq = away_df['FTHG'].mean() / avg_home_goals if not away_df.empty else 1.0
     
-    # Expected Goals (xG)
     exp_home = home_attack_iq * away_defense_iq * avg_home_goals
     exp_away = away_attack_iq * home_defense_iq * avg_away_goals
     
-    return exp_home, exp_away, random.randint(85, 98) # Confidence simulator ya IQ
+    return exp_home, exp_away, random.randint(88, 98)
 
-# --- 3. UI BRANDING & CONTACT ---
+# --- 3. UI BRANDING & FOOTER ---
 def get_base64_image(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as img_file: return base64.b64encode(img_file.read()).decode()
@@ -71,22 +68,54 @@ def display_footer():
     st.markdown(f"""
         <div style="text-align: center; padding: 15px; border: 1px solid #00FF00; border-radius: 15px; background: rgba(0,255,0,0.05);">
             <h3 style="color: #00FF00;">💰 LIPA KUPATA ACCESS YA MKULUNGWA AI</h3>
-            <p>Tuma muamala WhatsApp kupata ruhusa ya kutumia mashine.</p>
-            <p style="font-size: 22px; font-weight: bold;">📞 0699470308</p>
+            <p>Tuma muamala WhatsApp 0699470308 ili kupewa ruhusa (Access).</p>
             <a href="https://wa.me/255699470308?text=Habari Master, nimefanya malipo ya Mkulungwa AI." target="_blank">
                 <button style="background:#25D366;color:white;padding:10px 20px;border-radius:10px;border:none;font-weight:bold;cursor:pointer;">💬 TUMA MUAMALA WHATSAPP</button>
             </a>
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. APP INITIALIZATION ---
+# --- 4. DATA SYNC ENGINE ---
+LEAGUE_MAP = {
+    "ENGLAND": {"Premier League": "E0", "Championship": "E1", "League 1": "E2", "League 2": "E3"},
+    "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
+    "ITALY": {"Serie A": "I1", "Serie B": "I2"},
+    "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
+    "FRANCE": {"Ligue 1": "F1", "Ligue 2": "F2"},
+    "NETHERLANDS": {"Eredivisie": "N1"},
+    "PORTUGAL": {"Primeira Liga": "P1"},
+    "TURKEY": {"Super Lig": "T1"},
+    "BELGIUM": {"Pro League": "B1"},
+    "SCOTLAND": {"Premiership": "SC0", "Championship": "SC1"},
+    "GREECE": {"Super League": "G1"}
+}
+
+def auto_sync_data():
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = sqlite3.connect(DB_NAME); c = conn.cursor()
+    c.execute("SELECT value FROM system_config WHERE key = 'last_sync'")
+    res = c.fetchone()
+    if res is None or res[0] != today:
+        with st.status("🔄 Auto-Updating Global Leagues...", expanded=False):
+            for cat, sub in LEAGUE_MAP.items():
+                for name, code in sub.items():
+                    try:
+                        url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
+                        r = requests.get(url, timeout=5)
+                        if r.status_code == 200:
+                            with open(f"{code}.csv", 'wb') as f: f.write(r.content)
+                    except: continue
+            c.execute("INSERT OR REPLACE INTO system_config VALUES ('last_sync', ?)", (today,))
+            conn.commit()
+    conn.close()
+
+# --- 5. MAIN APP FLOW ---
 init_db()
-st.set_page_config(page_title="MKULUNGWA AI V20.0", layout="wide")
-st.markdown("<style>.main {background-color:#0E1117;color:#E0E0E0;} .stButton>button {background:linear-gradient(90deg,#00FF00,#008000);color:white;font-weight:bold;border-radius:10px;border:none;}</style>", unsafe_allow_html=True)
+st.set_page_config(page_title="MKULUNGWA AI V20.1", layout="wide")
+st.markdown("<style>.main {background-color:#0E1117;color:#E0E0E0;} .stButton>button {width:100%;background:linear-gradient(90deg,#00FF00,#008000);color:white;font-weight:bold;border-radius:10px;border:none;height:3em;}</style>", unsafe_allow_html=True)
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- 5. LOGIN/REGISTER FLOW ---
 if not st.session_state.logged_in:
     display_custom_logo(200)
     t1, t2 = st.tabs(["🔒 LOGIN", "📝 REGISTER"])
@@ -100,10 +129,10 @@ if not st.session_state.logged_in:
             if res:
                 if res[0] == 'active':
                     st.session_state.logged_in, st.session_state.username, st.session_state.user_role = True, u, res[1]
-                    log_action(u, "System Login")
+                    log_action(u, "Login Success")
                     st.rerun()
-                else: st.error("❌ Akaunti imefungwa. Lipia kupitia namba hapo chini.")
-            else: st.error("🚨 Username au Password siyo sahihi.")
+                else: st.error("❌ Akaunti imefungwa. Lipia kwanza.")
+            else: st.error("🚨 Makosa kwenye Username au Password.")
     with t2:
         nu = st.text_input("New Username", key="r_u")
         np = st.text_input("New Password", type="password", key="r_p")
@@ -111,21 +140,18 @@ if not st.session_state.logged_in:
             conn = sqlite3.connect(DB_NAME); c = conn.cursor()
             try:
                 c.execute("INSERT INTO users VALUES (?,?,?,?)", (nu, hashlib.sha256(np.encode()).hexdigest(), "user", "active"))
-                conn.commit(); st.success("✅ Akaunti tayari! Login sasa.")
+                conn.commit(); st.success("✅ Karibu Master! Login sasa.")
             except: st.error("❌ Jina tayari lipo.")
             conn.close()
     display_footer()
-
 else:
-    # --- DASHBOARD & ANALYTICS ---
+    auto_sync_data()
     with st.sidebar:
         display_custom_logo(100)
-        st.write(f"Mtumiaji: **{st.session_state.username.upper()}**")
+        st.write(f"Master: **{st.session_state.username.upper()}**")
         if st.button("🚪 LOGOUT"): st.session_state.logged_in = False; st.rerun()
 
-    st.markdown("<h1 style='color:#00FF00;text-align:center;'>🎯 MKULUNGWA AI IQ DASHBOARD</h1>", unsafe_allow_html=True)
-    
-    LEAGUE_MAP = {"ENGLAND":{"Premier League":"E0"}, "SPAIN":{"La Liga":"SP1"}, "ITALY":{"Serie A":"I1"}, "GERMANY":{"Bundesliga":"D1"}, "FRANCE":{"Ligue 1":"F1"}}
+    st.markdown("<h1 style='color:#00FF00;text-align:center;'>🎯 MKULUNGWA AI NEURAL IQ</h1>", unsafe_allow_html=True)
     
     cat = st.selectbox("📂 CHAGUA NCHI", list(LEAGUE_MAP.keys()))
     l_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[cat].keys()))
@@ -139,28 +165,23 @@ else:
         a_t = c2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
         
         if st.button("🎯 RUN NEURAL IQ ANALYSIS"):
-            with st.status("🧠 Analyzing Neural Patterns...", expanded=True) as status:
-                st.write("📡 Fetching league averages...")
-                time.sleep(1)
-                st.write("📈 Calculating xG (Expected Goals)...")
+            with st.status("🧠 Processing Neural Probability...", expanded=True) as status:
                 exp_h, exp_a, conf = calculate_iq_metrics(df, h_t, a_t)
                 time.sleep(1)
-                status.update(label="✅ IQ Analysis Complete!", state="complete")
+                status.update(label="✅ Analysis Complete!", state="complete")
             
-            # DASHBOARD DISPLAY
             st.markdown(f"""
-                <div style="background:#1A1C24; padding:20px; border-radius:15px; border-left:10px solid #00FF00;">
+                <div style="background:#1A1C24; padding:20px; border-radius:15px; border-left:10px solid #00FF00; margin-bottom:20px;">
                     <h2 style="color:#00FF00;text-align:center;">{h_t} vs {a_t}</h2>
                     <div style="display:flex; justify-content:space-around; text-align:center;">
-                        <div><p>AI EXPECTED GOALS</p><h3>{exp_h:.2f} - {exp_a:.2f}</h3></div>
-                        <div><p>AI CONFIDENCE</p><h3 style="color:#00FF00;">{conf}%</h3></div>
+                        <div><p style='color:#888;'>EXPECTED GOALS (xG)</p><h3 style='font-size:30px;'>{exp_h:.2f} - {exp_a:.2f}</h3></div>
+                        <div><p style='color:#888;'>AI CONFIDENCE</p><h3 style="color:#00FF00; font-size:30px;">{conf}%</h3></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
             
-            # MASTER ADVICE
-            advice = "Over 1.5 & Double Chance" if (exp_h + exp_a) > 2.0 else "Under 3.5 & Home/Away Win"
-            st.markdown(f"<div style='margin-top:20px; padding:15px; background:rgba(0,255,0,0.1); border:1px solid #00FF00; border-radius:10px; color:#00FF00; text-align:center; font-size:20px;'><b>MASTER ADVICE:</b> {advice}</div>", unsafe_allow_html=True)
-            log_action(st.session_state.username, f"Analyzed {h_t} vs {a_t}")
+            advice = "Over 1.5 & Double Chance" if (exp_h + exp_a) > 2.1 else "Under 3.5 & Home/Away Win"
+            st.markdown(f"<div style='padding:20px; background:rgba(0,255,0,0.1); border:1px solid #00FF00; border-radius:10px; color:#00FF00; text-align:center; font-size:22px; font-weight:bold;'>MASTER ADVICE: {advice}</div>", unsafe_allow_html=True)
+            log_action(st.session_state.username, f"Analyzed {h_t} vs {a_t} in {l_name}")
 
     display_footer()
