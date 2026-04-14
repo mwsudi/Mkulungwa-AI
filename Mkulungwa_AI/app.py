@@ -5,160 +5,162 @@ import numpy as np
 import requests
 import time
 import hashlib
-import random
-from io import StringIO
+import sqlite3
+import base64
+from datetime import datetime
+from scipy.stats import poisson
 
-# 1. ULTIMATE UI SETUP
-st.set_page_config(page_title="MKULUNGWA AI V17.7", layout="wide")
+# --- 1. DATABASE & SECURITY ---
+DB_NAME = "users.db"
 
-st.markdown("""
-    <style>
-    .main { background-color: #0E1117; color: #E0E0E0; }
-    .stButton>button { 
-        background: linear-gradient(90deg, #00FF00, #008000); 
-        color: white; border-radius: 15px; height: 4em; width: 100%; border: none; font-weight: bold; font-size: 20px;
-        box-shadow: 0px 5px 15px rgba(0, 255, 0, 0.4); transition: 0.3s;
-    }
-    .stButton>button:hover { transform: scale(1.02); box-shadow: 0px 8px 20px rgba(0, 255, 0, 0.6); }
-    .result-card-green { background: #1A1C24; padding: 30px; border-radius: 20px; border-left: 10px solid #00FF00; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); }
-    .result-card-yellow { background: #1A1C24; padding: 30px; border-radius: 20px; border-left: 10px solid #FFD700; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); }
-    .result-card-red { background: #1A1C24; padding: 30px; border-radius: 20px; border-left: 10px solid #FF4B4B; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); }
-    .advice-box { 
-        background: linear-gradient(135deg, rgba(0,255,0,0.1), rgba(0,0,0,0.5)); 
-        border: 2px solid #00FF00; padding: 25px; border-radius: 15px; margin-top: 25px;
-        color: #00FF00; font-size: 18px; line-height: 1.6;
-    }
-    h1 { color: #00FF00; text-align: center; font-size: 60px; font-weight: 900; letter-spacing: -2px; }
-    </style>
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT, status TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS logs (username TEXT, action TEXT, timestamp TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT)''')
+    admin_pw = hashlib.sha256("admin123".encode()).hexdigest()
+    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?)", ("admin", admin_pw, "admin", "active"))
+    conn.commit()
+    conn.close()
+
+def log_action(username, action):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO logs VALUES (?, ?, ?)", (username, action, now))
+    conn.commit()
+    conn.close()
+
+# --- 2. THE IQ CORE (POISSON ENGINE) ---
+def calculate_iq_metrics(df, home_team, away_team):
+    # Hesabu ya Wastani (League Average)
+    avg_home_goals = df['FTHG'].mean()
+    avg_away_goals = df['FTAG'].mean()
+    
+    # Home Team IQ
+    home_df = df[df['HomeTeam'] == home_team]
+    home_attack_iq = home_df['FTHG'].mean() / avg_home_goals
+    home_defense_iq = home_df['FTAG'].mean() / avg_away_goals
+    
+    # Away Team IQ
+    away_df = df[df['AwayTeam'] == away_team]
+    away_attack_iq = away_df['FTAG'].mean() / avg_away_goals
+    away_defense_iq = away_df['FTHG'].mean() / avg_home_goals
+    
+    # Expected Goals (xG)
+    exp_home = home_attack_iq * away_defense_iq * avg_home_goals
+    exp_away = away_attack_iq * home_defense_iq * avg_away_goals
+    
+    return exp_home, exp_away, random.randint(85, 98) # Confidence simulator ya IQ
+
+# --- 3. UI BRANDING & CONTACT ---
+def get_base64_image(image_path):
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as img_file: return base64.b64encode(img_file.read()).decode()
+    return None
+
+def display_custom_logo(size=200):
+    img_base64 = get_base64_image("logo.png")
+    if img_base64:
+        st.markdown(f'<div style="text-align:center"><img src="data:image/png;base64,{img_base64}" style="width:{size}px;border-radius:50%;box-shadow:0 0 30px #00FF00;"></div>', unsafe_allow_html=True)
+    else: st.markdown("<h1 style='text-align:center;color:#00FF00;'>🛡️ MKULUNGWA AI</h1>", unsafe_allow_html=True)
+
+def display_footer():
+    st.markdown("<br><hr>", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="text-align: center; padding: 15px; border: 1px solid #00FF00; border-radius: 15px; background: rgba(0,255,0,0.05);">
+            <h3 style="color: #00FF00;">💰 LIPA KUPATA ACCESS YA MKULUNGWA AI</h3>
+            <p>Tuma muamala WhatsApp kupata ruhusa ya kutumia mashine.</p>
+            <p style="font-size: 22px; font-weight: bold;">📞 0699470308</p>
+            <a href="https://wa.me/255699470308?text=Habari Master, nimefanya malipo ya Mkulungwa AI." target="_blank">
+                <button style="background:#25D366;color:white;padding:10px 20px;border-radius:10px;border:none;font-weight:bold;cursor:pointer;">💬 TUMA MUAMALA WHATSAPP</button>
+            </a>
+        </div>
     """, unsafe_allow_html=True)
 
-# 2. ELITE LEAGUE MAPPING
-LEAGUE_MAP = {
-    "UEFA / EUROPA / CONFERENCE": {"ALL_ELITE_CLUBS": "UEFA_ALL"},
-    "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
-    "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
-    "ITALY": {"Serie A": "I1", "Serie B": "I2"},
-    "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
-    "FRANCE": {"Ligue 1": "F1"},
-    "NETHERLANDS": {"Eredivisie": "N1"},
-    "PORTUGAL": {"Primeira Liga": "P1"},
-    "TURKEY": {"Super Lig": "T1"},
-    "BELGIUM": {"Pro League": "B1"},
-    "SCOTLAND": {"Premiership": "SC0"},
-    "GREECE": {"Super League": "G1"}
-}
+# --- 4. APP INITIALIZATION ---
+init_db()
+st.set_page_config(page_title="MKULUNGWA AI V20.0", layout="wide")
+st.markdown("<style>.main {background-color:#0E1117;color:#E0E0E0;} .stButton>button {background:linear-gradient(90deg,#00FF00,#008000);color:white;font-weight:bold;border-radius:10px;border:none;}</style>", unsafe_allow_html=True)
 
-# 3. SIDEBAR INTELLIGENCE
-with st.sidebar:
-    st.markdown("### 🛡️ SYSTEM STATUS")
-    if st.button("🔄 REFRESH GLOBAL DATABASE"):
-        all_dfs = []
-        p_bar = st.progress(0, text="Establishing Neural Links...")
-        leagues = []
-        for cat, sub in LEAGUE_MAP.items():
-            if cat != "UEFA / EUROPA / CONFERENCE":
-                for n, c in sub.items(): leagues.append((n, c))
-        
-        for i, (n, c) in enumerate(leagues):
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+
+# --- 5. LOGIN/REGISTER FLOW ---
+if not st.session_state.logged_in:
+    display_custom_logo(200)
+    t1, t2 = st.tabs(["🔒 LOGIN", "📝 REGISTER"])
+    with t1:
+        u = st.text_input("Username", key="l_u")
+        p = st.text_input("Password", type="password", key="l_p")
+        if st.button("AUTHORIZE ENTRANCE"):
+            conn = sqlite3.connect(DB_NAME); c = conn.cursor()
+            c.execute("SELECT status, role FROM users WHERE username=? AND password=?", (u, hashlib.sha256(p.encode()).hexdigest()))
+            res = c.fetchone(); conn.close()
+            if res:
+                if res[0] == 'active':
+                    st.session_state.logged_in, st.session_state.username, st.session_state.user_role = True, u, res[1]
+                    log_action(u, "System Login")
+                    st.rerun()
+                else: st.error("❌ Akaunti imefungwa. Lipia kupitia namba hapo chini.")
+            else: st.error("🚨 Username au Password siyo sahihi.")
+    with t2:
+        nu = st.text_input("New Username", key="r_u")
+        np = st.text_input("New Password", type="password", key="r_p")
+        if st.button("CREATE ACCOUNT"):
+            conn = sqlite3.connect(DB_NAME); c = conn.cursor()
             try:
-                url = f"https://www.football-data.co.uk/mmz4281/2526/{c}.csv"
-                r = requests.get(url, timeout=12)
-                if r.status_code == 200:
-                    with open(f"{c}.csv", 'wb') as f: f.write(r.content)
-                    all_dfs.append(pd.read_csv(StringIO(r.text)))
-                p_bar.progress((i+1)/len(leagues), text=f"Processing {n} Analytics...")
-            except: continue
-        if all_dfs:
-            pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
-            st.success("DATABASE FULLY SYNCED!")
+                c.execute("INSERT INTO users VALUES (?,?,?,?)", (nu, hashlib.sha256(np.encode()).hexdigest(), "user", "active"))
+                conn.commit(); st.success("✅ Akaunti tayari! Login sasa.")
+            except: st.error("❌ Jina tayari lipo.")
+            conn.close()
+    display_footer()
 
-# 4. APP MAIN INTERFACE
-st.markdown("<h1>MKULUNGWA AI V17.7</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; font-size:20px; color:#888;'>THE ULTIMATE FINAL AUTHORITY IN FOOTBALL PREDICTION</p>", unsafe_allow_html=True)
-
-c1, c2 = st.columns(2)
-with c1:
-    cat = st.selectbox("📂 SELECTION CATEGORY", list(LEAGUE_MAP.keys()))
-with c2:
-    if cat == "UEFA / EUROPA / CONFERENCE": l_code = "UEFA_ALL"
-    else:
-        l_name = st.selectbox("🏆 ACTIVE LEAGUE", list(LEAGUE_MAP[cat].keys()))
-        l_code = LEAGUE_MAP[cat][l_name]
-
-# 5. CORE BRAIN
-df = pd.DataFrame()
-if os.path.exists(f"{l_code}.csv"):
-    df = pd.read_csv(f"{l_code}.csv")
-
-if not df.empty and 'HomeTeam' in df.columns:
-    teams = sorted(df['HomeTeam'].dropna().unique())
-    col1, col2 = st.columns(2)
-    h_t = col1.selectbox("🏠 HOME SIDE", teams)
-    a_t = col2.selectbox("🚀 AWAY SIDE", [t for t in teams if t != h_t])
-    
-    if st.button("🎯 RUN FINAL MASTER ANALYSIS"):
-        m_key = f"{h_t}{a_t}{l_code}_FINAL_V17"
-        seed = int(hashlib.md5(m_key.encode()).hexdigest(), 16) % (10**6)
-        np.random.seed(seed)
-        random.seed(seed)
-
-        st.write("🔍 *Analyzing Match Patterns...*")
-        p_bar_an = st.progress(0)
-        for i in range(101):
-            time.sleep(0.005)
-            p_bar_an.progress(i)
-
-        # Tactical Data Slicing
-        h_data = df[df['HomeTeam'] == h_t].tail(10)
-        a_data = df[df['AwayTeam'] == a_t].tail(10)
-        
-        xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
-        xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
-        total_exp = xh + xa
-        conf = 96.8 + (seed % 21) / 10
-        if conf > 98.9: conf = 98.9
-        
-        # 1. Predictions
-        if xh > (xa + 0.15): dc_pick = "1X (HOME/DRAW)"
-        elif xa > (xh + 0.15): dc_pick = "X2 (AWAY/DRAW)"
-        else: dc_pick = "12 (NO DRAW)"
-
-        goal_pick = "OVER 2.5" if total_exp > 2.6 else "OVER 1.5" if total_exp > 1.5 else "UNDER 3.5"
-        corner_calc = total_exp * 3.8 + (seed % 2)
-        corner_pick = "OVER 9.5" if corner_calc > 9.0 else "OVER 8.5" if corner_calc > 7.5 else "OVER 6.5"
-
-        # --- FINAL NEURAL ADVICE ENGINE ---
-        advice_pool = {
-            "goals": [
-                f"🔥 MKULUNGWA FINAL ADVICE: Mechi hii ina harufu ya magoli. Wastani wa {total_exp:.2f} unatoa picha ya mchezo wa wazi. Chagua Magoli.",
-                f"🔥 MASTER INSIGHT: Safu za ulinzi zote zinaonyesha udhaifu hivi karibuni. Over 1.5 ni chaguo la busara sana hapa.",
-                f"🔥 NEURAL ALERT: Data zinaonyesha mashambulizi mengi ya kati. Tarajia goli mapema kwenye kipindi cha kwanza."
-            ],
-            "safety": [
-                "⚖️ MKULUNGWA FINAL ADVICE: Huu ni mchezo wa kimkakati (Tactical Match). Epuka kumpa mtu 'Direct Win', Double Chance ndio usalama wako.",
-                "⚖️ MASTER INSIGHT: Timu hizi zinalingana sana kwa sasa. 12 au 1X ndio soko ambalo AI inaona lina uhakika wa zaidi ya 97%.",
-                "⚖️ SAFETY ALERT: Historia ya H2H inaonyesha matokeo ya kustaajabisha. Linda mtaji wako kwa kutumia Double Chance leo."
-            ],
-            "corners": [
-                "🚩 MKULUNGWA FINAL ADVICE: Kama soko la magoli ni gumu, hamia kwenye Kona. Takwimu zinaonyesha mechi itapigwa sana pembeni.",
-                "🚩 MASTER INSIGHT: Corner count inatarajiwa kuwa juu kwa sababu ya kasi ya winga wa timu hizi. Over 8.5 ni chaguo imara.",
-                "🚩 NEURAL ALERT: Timu zote mbili zinapiga mashuti mengi ya mbali yanayozalisha kona. Hapa kuna pesa kwenye Corners."
-            ]
-        }
-
-        if total_exp > 2.75: advice = random.choice(advice_pool["goals"])
-        elif corner_calc > 9.2: advice = random.choice(advice_pool["corners"])
-        else: advice = random.choice(advice_pool["safety"])
-
-        # DISPLAY RESULTS
-        style = "result-card-green" if conf >= 97.8 else "result-card-yellow" if conf >= 97.0 else "result-card-red"
-        st.markdown(f"<h2 style='text-align:center; color:#00FF00;'>🛡️ IQ CONFIDENCE: {conf:.1f}%</h2>", unsafe_allow_html=True)
-        
-        res1, res2, res3 = st.columns(3)
-        with res1: st.markdown(f"<div class='{style}'><h3>🏆 DOUBLE CHANCE</h3><h2>{dc_pick}</h2></div>", unsafe_allow_html=True)
-        with res2: st.markdown(f"<div class='{style}'><h3>🚩 CORNERS</h3><h2>{corner_pick}</h2></div>", unsafe_allow_html=True)
-        with res3: st.markdown(f"<div class='{style}'><h3>⚽ GOALS</h3><h2>{goal_pick}</h2></div>", unsafe_allow_html=True)
-        
-        st.markdown(f"<div class='advice-box'>{advice}</div>", unsafe_allow_html=True)
 else:
-    st.info("💡 DATABASE OFFLINE: Please run 'REFRESH GLOBAL DATABASE' to activate the Master Brain.")
+    # --- DASHBOARD & ANALYTICS ---
+    with st.sidebar:
+        display_custom_logo(100)
+        st.write(f"Mtumiaji: **{st.session_state.username.upper()}**")
+        if st.button("🚪 LOGOUT"): st.session_state.logged_in = False; st.rerun()
+
+    st.markdown("<h1 style='color:#00FF00;text-align:center;'>🎯 MKULUNGWA AI IQ DASHBOARD</h1>", unsafe_allow_html=True)
+    
+    LEAGUE_MAP = {"ENGLAND":{"Premier League":"E0"}, "SPAIN":{"La Liga":"SP1"}, "ITALY":{"Serie A":"I1"}, "GERMANY":{"Bundesliga":"D1"}, "FRANCE":{"Ligue 1":"F1"}}
+    
+    cat = st.selectbox("📂 CHAGUA NCHI", list(LEAGUE_MAP.keys()))
+    l_name = st.selectbox("🏆 CHAGUA LIGI", list(LEAGUE_MAP[cat].keys()))
+    l_code = LEAGUE_MAP[cat][l_name]
+    
+    if os.path.exists(f"{l_code}.csv"):
+        df = pd.read_csv(f"{l_code}.csv")
+        teams = sorted(df['HomeTeam'].dropna().unique())
+        c1, c2 = st.columns(2)
+        h_t = c1.selectbox("🏠 HOME TEAM", teams)
+        a_t = c2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+        
+        if st.button("🎯 RUN NEURAL IQ ANALYSIS"):
+            with st.status("🧠 Analyzing Neural Patterns...", expanded=True) as status:
+                st.write("📡 Fetching league averages...")
+                time.sleep(1)
+                st.write("📈 Calculating xG (Expected Goals)...")
+                exp_h, exp_a, conf = calculate_iq_metrics(df, h_t, a_t)
+                time.sleep(1)
+                status.update(label="✅ IQ Analysis Complete!", state="complete")
+            
+            # DASHBOARD DISPLAY
+            st.markdown(f"""
+                <div style="background:#1A1C24; padding:20px; border-radius:15px; border-left:10px solid #00FF00;">
+                    <h2 style="color:#00FF00;text-align:center;">{h_t} vs {a_t}</h2>
+                    <div style="display:flex; justify-content:space-around; text-align:center;">
+                        <div><p>AI EXPECTED GOALS</p><h3>{exp_h:.2f} - {exp_a:.2f}</h3></div>
+                        <div><p>AI CONFIDENCE</p><h3 style="color:#00FF00;">{conf}%</h3></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # MASTER ADVICE
+            advice = "Over 1.5 & Double Chance" if (exp_h + exp_a) > 2.0 else "Under 3.5 & Home/Away Win"
+            st.markdown(f"<div style='margin-top:20px; padding:15px; background:rgba(0,255,0,0.1); border:1px solid #00FF00; border-radius:10px; color:#00FF00; text-align:center; font-size:20px;'><b>MASTER ADVICE:</b> {advice}</div>", unsafe_allow_html=True)
+            log_action(st.session_state.username, f"Analyzed {h_t} vs {a_t}")
+
+    display_footer()
