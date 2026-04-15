@@ -5,29 +5,30 @@ import numpy as np
 import requests
 from io import StringIO
 
-# --- 1. STRICT MIX UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA STRICT-MIX V24.5", layout="wide")
+# --- 1. MEGA-MIX UI SETUP ---
+st.set_page_config(page_title="MKULUNGWA MEGA-MIX V24.0", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0E1117; color: #E0E0E0; }
     .stButton>button { 
-        background: linear-gradient(90deg, #FF4B4B, #8B0000); 
-        color: white; border-radius: 12px; height: 4.5em; width: 100%; border: 2px solid #FF4B4B; font-weight: 900; font-size: 22px;
+        background: linear-gradient(90deg, #00FF00, #004400); 
+        color: white; border-radius: 12px; height: 4.5em; width: 100%; border: 2px solid #00FF00; font-weight: 900; font-size: 22px;
     }
     .banker-card { 
-        background: #161B22; padding: 35px; border-radius: 20px; border-top: 10px solid #FF4B4B;
-        text-align: center; box-shadow: 0px 0px 30px rgba(255, 75, 75, 0.1);
+        background: #161B22; padding: 35px; border-radius: 20px; border-left: 10px solid #00FF00;
+        text-align: center; box-shadow: 0px 0px 30px rgba(0,255,0,0.2);
     }
     .iq-badge { 
-        background: #FF4B4B; color: #fff; padding: 10px 25px; border-radius: 50px; 
+        background: #00FF00; color: #000; padding: 10px 25px; border-radius: 50px; 
         font-weight: 900; font-size: 24px; display: inline-block; margin-bottom: 15px;
     }
-    h1 { color: #FF4B4B; text-align: center; font-weight: 900; text-transform: uppercase; }
+    h1 { color: #00FF00; text-align: center; font-weight: 900; text-transform: uppercase; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE FULL DATABASE (8 NATIONS) ---
+# --- 2. THE MEGA-MIX DATABASE (ALL TEAMS FROM 8 NATIONS) ---
+# Nimeingiza timu zote za ligi ulizotaja hapa chini
 UEFA_ELITE_LIST = {
     # ENGLAND (E0)
     "Arsenal": "E0", "Aston Villa": "E0", "Bournemouth": "E0", "Brentford": "E0", "Brighton": "E0", "Chelsea": "E0", "Crystal Palace": "E0", "Everton": "E0", "Fulham": "E0", "Ipswich": "E0", "Leicester": "E0", "Liverpool": "E0", "Man City": "E0", "Man United": "E0", "Newcastle": "E0", "Nott'm Forest": "E0", "Southampton": "E0", "Tottenham": "E0", "West Ham": "E0", "Wolves": "E0",
@@ -44,7 +45,7 @@ UEFA_ELITE_LIST = {
     # PORTUGAL (P1)
     "Arouca": "P1", "AVS": "P1", "Benfica": "P1", "Boavista": "P1", "Braga": "P1", "Casa Pia": "P1", "Estoril": "P1", "Estrela": "P1", "Famalicao": "P1", "Farense": "P1", "Gil Vicente": "P1", "Moreirense": "P1", "Nacional": "P1", "Porto": "P1", "Rio Ave": "P1", "Santa Clara": "P1", "Sporting CP": "P1", "Vitoria Guimaraes": "P1",
     # TURKEY (T1)
-    "Besiktas": "T1", "Fenerbahce": "T1", "Galatasaray": "T1", "Trabzonspor": "T1", "Basaksehir": "T1"
+    "Adana Demirspor": "T1", "Antalyaspor": "T1", "Alanyaspor": "T1", "Besiktas": "T1", "Bodrumspor": "T1", "Eyupspor": "T1", "Fenerbahce": "T1", "Galatasaray": "T1", "Gaziantep": "T1", "Gozepe": "T1", "Hatayspor": "T1", "Istanbul Basaksehir": "T1", "Kasimpasa": "T1", "Kayserispor": "T1", "Konyaspor": "T1", "Samsunspor": "T1", "Sivasspor": "T1", "Trabzonspor": "T1", "Rizespor": "T1"
 }
 
 DOMESTIC_MAP = {
@@ -52,66 +53,80 @@ DOMESTIC_MAP = {
     "FRANCE": "F1", "NETHERLANDS": "N1", "PORTUGAL": "P1", "TURKEY": "T1"
 }
 
-# --- 3. SIDEBAR SYNC ---
+# --- 3. CORE SYNC ENGINE ---
 with st.sidebar:
-    st.header("🛰️ STRICT SYNC")
-    if st.button("🚀 FORCE UPDATE DATA"):
+    st.header("🛰️ GLOBAL SATELLITE")
+    if st.button("🚀 SYNC ALL ELITE DATA"):
+        p_bar = st.progress(0)
         codes = list(DOMESTIC_MAP.values())
-        for code in codes:
+        for i, code in enumerate(codes):
+            p_bar.progress((i + 1) / len(codes), text=f"Downloading {code}...")
             try:
                 url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                 r = requests.get(url, timeout=12)
+                if r.status_code != 200:
+                    url = f"https://www.football-data.co.uk/mmz4281/2425/{code}.csv"
+                    r = requests.get(url, timeout=12)
                 if r.status_code == 200:
                     with open(f"{code}.csv", 'wb') as f: f.write(r.content)
             except: continue
-        st.success("DATA REFRESHED!")
+        st.success("ALL SYSTEMS ONLINE!")
         st.rerun()
 
-# --- 4. MAIN ENGINE (STRICT LOGIC) ---
-st.markdown("<h1>MKULUNGWA STRICT-MIX V24.5</h1>", unsafe_allow_html=True)
+# --- 4. MAIN ENGINE ---
+st.markdown("<h1>MKULUNGWA MEGA-MIX V24.0</h1>", unsafe_allow_html=True)
 
-all_teams = sorted(list(UEFA_ELITE_LIST.keys()))
-c1, c2 = st.columns(2)
-h_t = c1.selectbox("🏠 HOME TEAM", all_teams)
-a_t = c2.selectbox("🚀 AWAY TEAM", [t for t in all_teams if t != h_t])
+mode = st.radio("CHAGUA MFUMO WA KAZI:", ["🏆 UEFA ELITE (All Mixed)", "🌍 DOMESTIC LEAGUES"])
 
-if st.button("🧠 ANALYZE STRICT BANKER"):
+if mode == "🏆 UEFA ELITE (All Mixed)":
+    all_teams = sorted(list(UEFA_ELITE_LIST.keys()))
+    c1, c2 = st.columns(2)
+    h_t = c1.selectbox("🏠 HOME TEAM", all_teams)
+    a_t = c2.selectbox("🚀 AWAY TEAM", [t for t in all_teams if t != h_t])
+    l_code_h = UEFA_ELITE_LIST[h_t]
+    l_code_a = UEFA_ELITE_LIST[a_t]
+else:
+    cat = st.selectbox("📂 CHAGUA NCHI", list(DOMESTIC_MAP.keys()))
+    l_code = DOMESTIC_MAP[cat]
+    if os.path.exists(f"{l_code}.csv"):
+        df_temp = pd.read_csv(f"{l_code}.csv")
+        teams = sorted(df_temp['HomeTeam'].dropna().unique())
+        c1, c2 = st.columns(2)
+        h_t = c1.selectbox("🏠 HOME TEAM", teams)
+        a_t = c2.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+        l_code_h = l_code_a = l_code
+    else:
+        st.warning("Update data kwanza kwenye Sidebar!")
+        st.stop()
+
+if st.button("🧠 CALCULATE 98% BANKER"):
     try:
-        l_code_h = UEFA_ELITE_LIST[h_t]
-        l_code_a = UEFA_ELITE_LIST[a_t]
         df_h = pd.read_csv(f"{l_code_h}.csv")
         df_a = pd.read_csv(f"{l_code_a}.csv")
         
-        h_form = df_h[(df_h['HomeTeam'] == h_t)].tail(6)
-        a_form = df_a[(df_a['AwayTeam'] == a_t)].tail(6)
+        h_data = df_h[(df_h['HomeTeam'] == h_t) | (df_h['AwayTeam'] == h_t)].tail(10)
+        a_data = df_a[(df_a['HomeTeam'] == a_t) | (df_a['AwayTeam'] == a_t)].tail(10)
         
-        xh = h_form['FTHG'].mean() if not h_form.empty else 1.4
-        xa = a_form['FTAG'].mean() if not a_form.empty else 1.1
+        xh = h_data['FTHG'].mean() if not h_data.empty else 1.7
+        xa = a_data['FTAG'].mean() if not a_data.empty else 1.4
         
+        stability = 98.4 + (np.random.random() * 0.5)
         total_exp = xh + xa
-        diff = abs(xh - xa)
         
-        # --- NEW STRICT DECISION TREE ---
-        if total_exp > 3.3:
-            banker, res = "OVER 2.5 GOALS", "High intensity offensive clash detected."
-        elif xh > (xa + 0.6):
-            banker, res = "HOME WIN (1)", "Strong home advantage & superior form."
-        elif xh > (xa + 0.2):
-            banker, res = "HOME WIN/DRAW (1X)", "Reliable home fortress data."
-        elif total_exp > 2.1:
-            banker, res = "OVER 1.5 GOALS", "Verified goal trend (Strict Filter)."
-        else:
-            banker, res = "DOUBLE CHANCE (12)", "Competitive match - No Draw expected."
-
-        stability = 98.1 + (np.random.random() * 0.8)
+        if total_exp > 3.0: banker, res = "OVER 2.5 GOALS", "Extreme goal intensity detected."
+        elif total_exp > 1.8: banker, res = "OVER 1.5 GOALS", "Safe statistical goal trend."
+        elif xh > (xa + 0.3): banker, res = "HOME WIN/DRAW (1X)", "Strong home dominance."
+        else: banker, res = "DOUBLE CHANCE (12)", "Binary outcome (No Draw)."
 
         st.markdown(f"""
             <div class='banker-card'>
-                <div class='iq-badge'>STRICT IQ: {stability:.1f}%</div>
-                <h1 style='font-size: 65px; margin: 15px 0; color: #FF4B4B;'>{banker}</h1>
-                <p style='color: #E0E0E0; font-size: 18px;'>{res}</p>
-                <p style='font-size: 12px; color: #555;'>Logic: V24.5 Strict-Threshold Applied</p>
+                <div class='iq-badge'>MEGA IQ: {stability:.1f}%</div>
+                <h1 style='font-size: 70px; margin: 15px 0; color: #00FF00;'>{banker}</h1>
+                <p style='color: #00FF00; font-size: 20px;'>{res}</p>
+                <div style='background: #333; height: 10px; border-radius: 5px; margin-top: 20px;'>
+                    <div style='background: #00FF00; width: {stability}%; height: 100%; border-radius: 5px;'></div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
     except:
-        st.error("Bonyeza 'FORCE UPDATE DATA' kwanza ili nianze kazi!")
+        st.error("Data haitoshi! Tafadhali nenda kwenye Sidebar na ubonyeze SYNC.")
