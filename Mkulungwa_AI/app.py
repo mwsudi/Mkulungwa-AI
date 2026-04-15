@@ -27,17 +27,25 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE MEGA-MIX DATABASE (ALL UEFA TEAMS IN ONE PLACE) ---
-# Nimeziweka zote pamoja kama ulivyotaka Master
+# --- 2. THE MEGA-MIX DATABASE (ALL TEAMS FROM 8 NATIONS) ---
+# Nimeingiza timu zote za ligi ulizotaja hapa chini
 UEFA_ELITE_LIST = {
-    "Real Madrid": "SP1", "Barcelona": "SP1", "Atletico Madrid": "SP1", "Girona": "SP1", "Sociedad": "SP1",
-    "Man City": "E0", "Arsenal": "E0", "Liverpool": "E0", "Aston Villa": "E0", "Man United": "E0", "Chelsea": "E0", "Tottenham": "E0",
-    "Bayern Munich": "D1", "Leverkusen": "D1", "Dortmund": "D1", "RB Leipzig": "D1", "Stuttgart": "D1",
-    "Inter Milan": "I1", "AC Milan": "I1", "Juventus": "I1", "Atalanta": "I1", "Roma": "I1", "Lazio": "I1", "Napoli": "I1",
-    "PSG": "F1", "Monaco": "F1", "Lille": "F1", "Lyon": "F1", "Marseille": "F1",
-    "Benfica": "P1", "Sporting CP": "P1", "Porto": "P1",
-    "Ajax": "N1", "PSV Eindhoven": "N1", "Feyenoord": "N1",
-    "Galatasaray": "T1", "Fenerbahce": "T1", "Besiktas": "T1"
+    # ENGLAND (E0)
+    "Arsenal": "E0", "Aston Villa": "E0", "Bournemouth": "E0", "Brentford": "E0", "Brighton": "E0", "Chelsea": "E0", "Crystal Palace": "E0", "Everton": "E0", "Fulham": "E0", "Ipswich": "E0", "Leicester": "E0", "Liverpool": "E0", "Man City": "E0", "Man United": "E0", "Newcastle": "E0", "Nott'm Forest": "E0", "Southampton": "E0", "Tottenham": "E0", "West Ham": "E0", "Wolves": "E0",
+    # SPAIN (SP1)
+    "Alaves": "SP1", "Ath Bilbao": "SP1", "Atletico Madrid": "SP1", "Barcelona": "SP1", "Betis": "SP1", "Celta": "SP1", "Espanyol": "SP1", "Getafe": "SP1", "Girona": "SP1", "Las Palmas": "SP1", "Leganes": "SP1", "Mallorca": "SP1", "Osasuna": "SP1", "Rayo Vallecano": "SP1", "Real Madrid": "SP1", "Sociedad": "SP1", "Sevilla": "SP1", "Valencia": "SP1", "Valladolid": "SP1", "Villarreal": "SP1",
+    # ITALY (I1)
+    "AC Milan": "I1", "Atalanta": "I1", "Bologna": "I1", "Cagliari": "I1", "Como": "I1", "Empoli": "I1", "Fiorentina": "I1", "Genoa": "I1", "Inter Milan": "I1", "Juventus": "I1", "Lazio": "I1", "Lecce": "I1", "Monza": "I1", "Napoli": "I1", "Parma": "I1", "Roma": "I1", "Torino": "I1", "Udinese": "I1", "Venezia": "I1", "Verona": "I1",
+    # GERMANY (D1)
+    "Augsburg": "D1", "Bayern Munich": "D1", "Bochum": "D1", "Dortmund": "D1", "Eintracht Frankfurt": "D1", "Freiburg": "D1", "Heidenheim": "D1", "Hoffenheim": "D1", "Holstein Kiel": "D1", "Leverkusen": "D1", "Mainz": "D1", "M'gladbach": "D1", "RB Leipzig": "D1", "St Pauli": "D1", "Stuttgart": "D1", "Union Berlin": "D1", "Werder Bremen": "D1", "Wolfsburg": "D1",
+    # FRANCE (F1)
+    "Angers": "F1", "Auxerre": "F1", "Brest": "F1", "Le Havre": "F1", "Lens": "F1", "Lille": "F1", "Lyon": "F1", "Marseille": "F1", "Monaco": "F1", "Montpellier": "F1", "Nantes": "F1", "Nice": "F1", "PSG": "F1", "Reims": "F1", "Rennes": "F1", "St Etienne": "F1", "Strasbourg": "F1", "Toulouse": "F1",
+    # NETHERLANDS (N1)
+    "Ajax": "N1", "Almere City": "N1", "AZ Alkmaar": "N1", "Feyenoord": "N1", "Fortuna Sittard": "N1", "Go Ahead Eagles": "N1", "Groningen": "N1", "Heerenveen": "N1", "Heracles": "N1", "NAC Breda": "N1", "NEC Nijmegen": "N1", "PEC Zwolle": "N1", "PSV Eindhoven": "N1", "RKC Waalwijk": "N1", "Sparta Rotterdam": "N1", "Twente": "N1", "Utrecht": "N1", "Willem II": "N1",
+    # PORTUGAL (P1)
+    "Arouca": "P1", "AVS": "P1", "Benfica": "P1", "Boavista": "P1", "Braga": "P1", "Casa Pia": "P1", "Estoril": "P1", "Estrela": "P1", "Famalicao": "P1", "Farense": "P1", "Gil Vicente": "P1", "Moreirense": "P1", "Nacional": "P1", "Porto": "P1", "Rio Ave": "P1", "Santa Clara": "P1", "Sporting CP": "P1", "Vitoria Guimaraes": "P1",
+    # TURKEY (T1)
+    "Adana Demirspor": "T1", "Antalyaspor": "T1", "Alanyaspor": "T1", "Besiktas": "T1", "Bodrumspor": "T1", "Eyupspor": "T1", "Fenerbahce": "T1", "Galatasaray": "T1", "Gaziantep": "T1", "Gozepe": "T1", "Hatayspor": "T1", "Istanbul Basaksehir": "T1", "Kasimpasa": "T1", "Kayserispor": "T1", "Konyaspor": "T1", "Samsunspor": "T1", "Sivasspor": "T1", "Trabzonspor": "T1", "Rizespor": "T1"
 }
 
 DOMESTIC_MAP = {
@@ -54,7 +62,6 @@ with st.sidebar:
         for i, code in enumerate(codes):
             p_bar.progress((i + 1) / len(codes), text=f"Downloading {code}...")
             try:
-                # Tunavuta data za msimu huu na uliopita kwa usalama
                 url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                 r = requests.get(url, timeout=12)
                 if r.status_code != 200:
@@ -69,7 +76,6 @@ with st.sidebar:
 # --- 4. MAIN ENGINE ---
 st.markdown("<h1>MKULUNGWA MEGA-MIX V24.0</h1>", unsafe_allow_html=True)
 
-# Selection Mode
 mode = st.radio("CHAGUA MFUMO WA KAZI:", ["🏆 UEFA ELITE (All Mixed)", "🌍 DOMESTIC LEAGUES"])
 
 if mode == "🏆 UEFA ELITE (All Mixed)":
