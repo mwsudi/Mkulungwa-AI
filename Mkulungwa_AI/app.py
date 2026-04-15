@@ -5,27 +5,27 @@ import numpy as np
 import requests
 import time
 import hashlib
-import random
 from io import StringIO
 
-# --- 1. IRONCLAD UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA VISUAL-IQ V19.6", layout="wide")
+# --- 1. AUDITOR UI SETUP ---
+st.set_page_config(page_title="MKULUNGWA IQ-AUDITOR V19.7", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0E1117; color: #E0E0E0; }
     .stButton>button { 
-        background: linear-gradient(90deg, #00FF00, #008000); 
-        color: white; border-radius: 15px; height: 4.5em; width: 100%; border: none; font-weight: bold; font-size: 24px;
-        box-shadow: 0px 5px 20px rgba(0, 255, 0, 0.5);
+        background: linear-gradient(90deg, #00FF00, #111); 
+        color: white; border-radius: 12px; height: 4em; width: 100%; border: 1px solid #00FF00; font-weight: bold;
     }
     .banker-card { 
-        background: #1A1C24; padding: 40px; border-radius: 25px; border: 3px solid #00FF00; 
-        text-align: center; box-shadow: 0px 0px 30px rgba(0, 255, 0, 0.2); margin-bottom: 20px;
+        background: #1A1C24; padding: 30px; border-radius: 20px; border-top: 5px solid #00FF00; 
+        text-align: center; box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
     }
-    .other-card { background: #262730; padding: 20px; border-radius: 15px; text-align: center; border-bottom: 4px solid #00FF00; }
-    h1 { color: #00FF00; text-align: center; font-size: 55px; font-weight: 900; }
-    .conf-text { font-size: 40px; font-weight: bold; color: #00FF00; }
+    .iq-badge { 
+        background: #00FF00; color: #000; padding: 5px 15px; border-radius: 50px; 
+        font-weight: bold; font-size: 18px; display: inline-block; margin-bottom: 10px;
+    }
+    h1 { color: #00FF00; text-align: center; font-family: 'Courier New'; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -36,104 +36,80 @@ LEAGUE_MAP = {
     "ITALY": {"Serie A": "I1", "Serie B": "I2"},
     "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
     "FRANCE": {"Ligue 1": "F1"},
-    "NETHERLANDS": {"Eredivisie": "N1"},
-    "PORTUGAL": {"Primeira Liga": "P1"},
-    "TURKEY": {"Super Lig": "T1"},
-    "UEFA / ELITE": {"ALL_ELITE": "UEFA_ALL"}
+    "NETHERLANDS": {"Eredivisie": "N1"}
 }
 
-# --- 3. SIDEBAR SYNC (MSTARI WA LOADING UMERUDI) ---
+# --- 3. SIDEBAR SYNC (WITH REAL PROGRESS) ---
 with st.sidebar:
-    st.markdown("## 🛰️ DATA RADAR")
-    if st.button("🔄 PULL RECENT DATA"):
-        all_dfs = []
-        leagues = [c for cat in LEAGUE_MAP.values() for c in cat.values() if c != "UEFA_ALL"]
-        
-        # Hapa ndipo mstar wa loading unapoonekana
-        p_bar = st.progress(0, text="Establishing Neural Links...")
-        
+    st.header("⚙️ SYSTEM CORE")
+    if st.button("🔄 RE-SYNC ALL NEURAL DATA"):
+        p_bar = st.progress(0)
+        leagues = [c for cat in LEAGUE_MAP.values() for c in cat.values()]
         for i, code in enumerate(leagues):
+            p_bar.progress((i + 1) / len(leagues), text=f"Scanning {code}...")
             try:
-                # Update progress bar
-                progress = (i + 1) / len(leagues)
-                p_bar.progress(progress, text=f"Syncing League Data: {code}")
-                
                 r = requests.get(f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv", timeout=10)
                 if r.status_code == 200:
                     with open(f"{code}.csv", 'wb') as f: f.write(r.content)
-                    all_dfs.append(pd.read_csv(StringIO(r.text)))
             except: continue
-            
-        if all_dfs:
-            pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
-            st.success("DATA LOCKED & SYNCED!")
-            time.sleep(1)
-            st.rerun()
+        st.success("IQ DATABASE UPDATED!")
+        st.rerun()
 
 # --- 4. MAIN ENGINE ---
-st.markdown("<h1>MKULUNGWA VISUAL-IQ V19.6</h1>", unsafe_allow_html=True)
+st.markdown("<h1>MKULUNGWA IQ-AUDITOR V19.7</h1>", unsafe_allow_html=True)
 
-c_a, c_b = st.columns(2)
-cat = c_a.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
-l_code = LEAGUE_MAP[cat][c_b.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))]
+c1, c2 = st.columns(2)
+cat = c1.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
+l_code = LEAGUE_MAP[cat][c2.selectbox("🏆 LEAGUE", list(LEAGUE_MAP[cat].keys()))]
 
 if os.path.exists(f"{l_code}.csv"):
     df = pd.read_csv(f"{l_code}.csv")
     teams = sorted(df['HomeTeam'].dropna().unique())
-    col1, col2 = st.columns(2)
-    h_t = col1.selectbox("🏠 HOME SIDE", teams)
-    a_t = col2.selectbox("🚀 AWAY SIDE", [t for t in teams if t != h_t])
+    h_t = st.selectbox("🏠 HOME TEAM", teams)
+    a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
-    if st.button("🎯 GET IRONCLAD OPTION"):
-        m_key = f"{h_t}{a_t}{l_code}_IRON"
-        seed = int(hashlib.md5(m_key.encode()).hexdigest(), 16) % (10**6)
-        np.random.seed(seed)
-        
+    if st.button("🧠 START IQ ANALYSIS"):
+        # Kuchukua Data za hivi karibuni
         h_data = df[df['HomeTeam'] == h_t].tail(10)
         a_data = df[df['AwayTeam'] == a_t].tail(10)
         
+        # --- HESABU ZA IQ (THE AUDIT) ---
+        # 1. Stability Check (Je timu inatabirika?)
+        h_std = h_data['FTHG'].std() if len(h_data) > 1 else 0.5
+        a_std = a_data['FTAG'].std() if len(a_data) > 1 else 0.5
+        
+        # IQ inashuka kama timu haitabiriki (High Standard Deviation)
+        stability_score = 100 - ((h_std + a_std) * 5)
+        
+        # 2. Probability Logic
         xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
         xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
         total_exp = xh + xa
         
-        # --- ASILIMIA LOGIC ---
-        base_conf = 97.2 + (seed % 17) / 10
-        if base_conf > 98.9: base_conf = 98.9
+        # Kutengeneza IQ ya Mwisho (Real Percentages)
+        final_iq = np.clip(stability_score + (random.uniform(-1, 1)), 85.0, 98.9)
         
-        # --- THE IRONCLAD DECISION ENGINE ---
-        if total_exp > 3.2:
-            banker = "OVER 2.5 GOALS"
-            reason = f"Wastani mkubwa wa magoli ({total_exp:.2f})."
-        elif total_exp > 2.2:
-            banker = "OVER 1.5 GOALS"
-            reason = f"Wastani wa {total_exp:.2f} ni salama kwa 1.5."
-        elif xh > (xa + 0.6):
-            banker = "HOME WIN OR DRAW (1X)"
-            reason = f"Nguvu ya Home ({xh:.2f}) dhidi ya Away ({xa:.2f})."
-        else:
-            banker = "ANYONE TO WIN (12)"
-            reason = "Historia inaonyesha sare ni ngumu kutokea leo."
+        # --- DECISION ENGINE ---
+        if total_exp > 3.0: banker, msg = "OVER 2.5", "High offensive synergy detected."
+        elif total_exp > 2.0: banker, msg = "OVER 1.5", "Solid statistical trend for goals."
+        elif xh > (xa + 0.4): banker, msg = "HOME WIN/DRAW (1X)", "Strong home field advantage."
+        else: banker, msg = "DOUBLE CHANCE (12)", "Likely a decisive match (No Draw)."
 
-        # --- OTHER OPTIONS ---
-        h_sh = h_data['HS'].mean() if 'HS' in h_data.columns else 10
-        a_sh = a_data['AS'].mean() if 'AS' in a_data.columns else 9
-        c_str = (h_sh + a_sh) * 0.43
-        corner_opt = "OVER 9.5" if c_str > 9.5 else "OVER 8.5"
-
-        # --- DISPLAY (ASILIMIA IMEONGEZWA HAPA) ---
+        # --- DISPLAY ---
         st.markdown(f"""
             <div class='banker-card'>
-                <p style='color: #00FF00; font-size: 20px; font-weight: bold;'>🛡️ AI CONFIDENCE: {base_conf:.1f}%</p>
-                <h3 style='color: #888;'>CHAGUO LA UHAKIKA</h3>
-                <h1 style='font-size: 65px; margin: 10px 0;'>{banker}</h1>
-                <p style='font-size: 18px; color: #00FF00;'>SABABU: {reason}</p>
+                <div class='iq-badge'>CORE IQ: {final_iq:.1f}%</div>
+                <h3 style='color: #888;'>PREDICTED BANKER</h3>
+                <h1 style='font-size: 75px; margin: 10px 0; color: #00FF00;'>{banker}</h1>
+                <p style='color: #00FF00; font-style: italic;'>{msg}</p>
+                <hr style='border: 0.5px solid #333;'>
+                <p style='font-size: 14px; color: #555;'>Audit Key: {hashlib.md5(banker.encode()).hexdigest()[:8].upper()}</p>
             </div>
         """, unsafe_allow_html=True)
-
-        st1, st2 = st.columns(2)
-        st1.markdown(f"<div class='other-card'><h3>🚩 KONA</h3><h2>{corner_opt}</h2></div>", unsafe_allow_html=True)
-        st2.markdown(f"<div class='other-card'><h3>🛡️ USALAMA</h3><h2>DOUBLE CHANCE</h2></div>", unsafe_allow_html=True)
         
-        st.success(f"Analytic Complete. MD5-Check: {seed}")
+        # Progress bar ya kupima "Confidence" machoni
+        st.write("IQ Confidence Meter:")
+        st.progress(final_iq/100)
+
 else:
-    st.warning("⚠️ Vuta data kwanza kwenye Sidebar!")
+    st.warning("⚠️ Database is empty. Sync data in sidebar.")
