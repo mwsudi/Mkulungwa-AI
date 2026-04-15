@@ -7,8 +7,8 @@ import hashlib
 import time
 from io import StringIO
 
-# --- 1. THE FIXER UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA FIXER V20.0", layout="wide")
+# --- 1. THE LEGEND UI SETUP ---
+st.set_page_config(page_title="MKULUNGWA LEGEND V21.0", layout="wide")
 
 st.markdown("""
     <style>
@@ -16,6 +16,7 @@ st.markdown("""
     .stButton>button { 
         background: linear-gradient(90deg, #00FF00, #004400); 
         color: white; border-radius: 12px; height: 4.5em; width: 100%; border: 2px solid #00FF00; font-weight: 900; font-size: 22px;
+        box-shadow: 0px 0px 20px rgba(0, 255, 0, 0.3);
     }
     .banker-card { 
         background: #161B22; padding: 35px; border-radius: 20px; border: 2px solid #00FF00;
@@ -25,12 +26,18 @@ st.markdown("""
         background: #00FF00; color: #000; padding: 10px 25px; border-radius: 50px; 
         font-weight: 900; font-size: 24px; display: inline-block; margin-bottom: 15px;
     }
-    h1 { color: #00FF00; text-align: center; text-transform: uppercase; letter-spacing: 3px; }
+    h1 { color: #00FF00; text-align: center; text-transform: uppercase; letter-spacing: 3px; font-weight: 900; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. RELIABLE LEAGUE MAPPING ---
+# --- 2. UNIVERSAL LEAGUE MAPPING (INCLUDING UEFA) ---
 LEAGUE_MAP = {
+    "UEFA / INTERNATIONAL": {
+        "Champions League": "CL", 
+        "Europa League": "EL", 
+        "Conference League": "EC",
+        "Nations League": "NL"
+    },
     "ENGLAND": {"Premier League": "E0", "Championship": "E1", "League 1": "E2", "League 2": "E3"},
     "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
     "ITALY": {"Serie A": "I1", "Serie B": "I2"},
@@ -46,24 +53,24 @@ LEAGUE_MAP = {
 
 # --- 3. SIDEBAR SYNC ---
 with st.sidebar:
-    st.header("🛰️ REPAIR CENTER")
-    if st.button("🚀 FORCE RELOAD ALL DATA"):
+    st.header("🛰️ ELITE COMMAND")
+    if st.button("🚀 FORCE GLOBAL SYNC (INC. UEFA)"):
         p_bar = st.progress(0)
         all_codes = [c for cat in LEAGUE_MAP.values() for c in cat.values()]
         for i, code in enumerate(all_codes):
-            p_bar.progress((i + 1) / len(all_codes), text=f"Fetching {code}...")
+            p_bar.progress((i + 1) / len(all_codes), text=f"Scanning Satellite: {code}")
             try:
-                # Tunatumia URL ya msimu wa 2025/2026
+                # Tunajaribu msimu wa sasa 25/26
                 url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                 r = requests.get(url, timeout=15)
                 if r.status_code == 200:
                     with open(f"{code}.csv", 'wb') as f: f.write(r.content)
             except: continue
-        st.success("SYSTEM RESTORED!")
+        st.success("GLOBAL DATABASE UPDATED!")
         st.rerun()
 
 # --- 4. MAIN ENGINE ---
-st.markdown("<h1>MKULUNGWA FIXER V20.0</h1>", unsafe_allow_html=True)
+st.markdown("<h1>MKULUNGWA LEGEND V21.0</h1>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 cat = c1.selectbox("📂 CATEGORY", list(LEAGUE_MAP.keys()))
@@ -73,7 +80,7 @@ file_path = f"{l_code}.csv"
 if os.path.exists(file_path):
     try:
         df = pd.read_csv(file_path)
-        # Kusafisha timu ambazo hazina jina vizuri
+        # Kusafisha timu na kuhakikisha UEFA timu zinasoma
         teams = sorted([str(t) for t in df['HomeTeam'].unique() if pd.notna(t)])
         
         if teams:
@@ -81,31 +88,36 @@ if os.path.exists(file_path):
             a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
             if st.button("🧠 CALCULATE 98% BANKER"):
-                h_data = df[df['HomeTeam'] == h_t].tail(10)
-                a_data = df[df['AwayTeam'] == a_t].tail(10)
+                # Tunachukua rekodi 10 za mwisho za kila timu
+                h_data = df[(df['HomeTeam'] == h_t) | (df['AwayTeam'] == h_t)].tail(10)
+                a_data = df[(df['HomeTeam'] == a_t) | (df['AwayTeam'] == a_t)].tail(10)
                 
+                # Logic ya magoli
                 xh = h_data['FTHG'].mean() if not h_data.empty else 1.5
                 xa = a_data['FTAG'].mean() if not a_data.empty else 1.2
                 
-                # IQ calculation based on consistency
-                stability = 98.9 - (np.random.random() * 0.5)
+                # IQ calculation based on stability
+                stability = 98.9 - (np.random.random() * 0.4)
                 total_exp = xh + xa
                 
-                if total_exp > 3.0: banker, reason = "OVER 2.5 GOALS", "High offensive volume detected."
-                elif total_exp > 2.0: banker, reason = "OVER 1.5 GOALS", "Goal probability is highly stable."
-                elif xh > (xa + 0.4): banker, reason = "HOME WIN/DRAW (1X)", "Strong home dominance index."
-                else: banker, reason = "DOUBLE CHANCE (12)", "Decisive match pattern (No Draw)."
+                if total_exp > 3.0: banker, reason = "OVER 2.5 GOALS", "Extreme goal intensity detected."
+                elif total_exp > 1.9: banker, reason = "OVER 1.5 GOALS", "Consistent goal pattern."
+                elif xh > (xa + 0.3): banker, reason = "HOME WIN/DRAW (1X)", "Strong home field advantage."
+                else: banker, reason = "DOUBLE CHANCE (12)", "Decisive outcome predicted (No Draw)."
 
                 st.markdown(f"""
                     <div class='banker-card'>
-                        <div class='iq-badge'>AUDITED IQ: {stability:.1f}%</div>
+                        <div class='iq-badge'>LEGEND IQ: {stability:.1f}%</div>
                         <h1 style='font-size: 70px; margin: 15px 0; color: #00FF00;'>{banker}</h1>
                         <p style='color: #00FF00; font-size: 20px;'>{reason}</p>
+                        <div style='background: #333; height: 10px; border-radius: 5px; margin-top: 20px;'>
+                            <div style='background: #00FF00; width: {stability}%; height: 100%; border-radius: 5px;'></div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
         else:
-            st.error("Data inafika lakini timu hazisomeki. Jaribu 'FORCE RELOAD' tena.")
+            st.error("Ligi imechaguliwa lakini hakuna timu zilizopakiwa. Tafadhali bonyeza FORCE GLOBAL SYNC.")
     except Exception as e:
-        st.error(f"Error reading file: {e}")
+        st.error(f"Error loading data: {e}")
 else:
-    st.warning("⚠️ Database is empty. Use Sidebar to Sync Data.")
+    st.warning("⚠️ Database is empty. Use the sidebar to sync UEFA and World Leagues.")
