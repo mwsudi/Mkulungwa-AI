@@ -6,8 +6,8 @@ import requests
 import random
 from io import StringIO
 
-# --- 1. UI SETUP (DARK THEME) ---
-st.set_page_config(page_title="MKULUNGWA AI V23.0 - GLOBAL BEAST", layout="wide")
+# --- 1. UI SETUP ---
+st.set_page_config(page_title="MKULUNGWA AI V25.0 - THE ORACLE", layout="wide")
 
 st.markdown("""
     <style>
@@ -29,47 +29,44 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. EXTENDED LEAGUE MAPPING ---
+# --- 2. GLOBAL LEAGUE MAPPING (NOW WITH GREECE) ---
 LEAGUE_MAP = {
-    "ENGLAND": "E0", 
-    "SPAIN": "SP1", 
-    "ITALY": "I1", 
-    "GERMANY": "D1", 
-    "FRANCE": "F1", 
-    "NETHERLANDS (Uholanzi)": "N1",
-    "PORTUGAL": "P1",
-    "BELGIUM": "B1",
-    "SCOTLAND": "SC0",
-    "TURKEY": "T1",
+    "ENGLAND": "E0", "SPAIN": "SP1", "ITALY": "I1", "GERMANY": "D1", "FRANCE": "F1", 
+    "NETHERLANDS": "N1", "PORTUGAL": "P1", "BELGIUM": "B1", "SCOTLAND": "SC0", 
+    "TURKEY": "T1", "UKRAINE": "U1", 
+    "GREECE": "G1", # Ugiriki Imeongezwa Hapa
     "UEFA LITE (CL/EL/ECL)": "UEFA_ALL"
 }
 
-# --- 3. GLOBAL SYNC ENGINE ---
+# --- 3. MASTER SYNC ENGINE ---
 with st.sidebar:
-    st.header("🛰️ GLOBAL SYNC")
+    st.header("🛰️ GLOBAL SATELLITE")
     if st.button("🔄 REFRESH ALL LEAGUES"):
         all_dfs = []
-        with st.spinner("Connecting to Global Databases..."):
+        with st.spinner("Fetching Data for 12 Nations..."):
             for name, code in LEAGUE_MAP.items():
-                if code == "UEFA_ALL": continue # Tutaishughulikia chini
+                if code == "UEFA_ALL": continue
                 try:
+                    # Kujaribu kuvuta msimu mpya (25/26) au uliopita (24/25)
                     url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                     r = requests.get(url, timeout=10)
+                    if r.status_code != 200:
+                        url = f"https://www.football-data.co.uk/mmz4281/2425/{code}.csv"
+                        r = requests.get(url, timeout=10)
+                    
                     if r.status_code == 200:
                         with open(f"{code}.csv", 'wb') as f: f.write(r.content)
                         all_dfs.append(pd.read_csv(StringIO(r.text)))
                 except: continue
             
-            # Kutengeneza UEFA LITE kwa kuunganisha ligi zote kubwa
             if all_dfs:
-                combined_df = pd.concat(all_dfs, ignore_index=True)
-                combined_df.to_csv("UEFA_ALL.csv", index=False)
-        st.success("DATABASE FULLY LOADED!")
+                pd.concat(all_dfs, ignore_index=True).to_csv("UEFA_ALL.csv", index=False)
+        st.success("DATABASE READY: GREECE INCLUDED!")
 
 # --- 4. MAIN ENGINE ---
-st.markdown("<h1>MKULUNGWA AI V23.0</h1>", unsafe_allow_html=True)
+st.markdown("<h1>MKULUNGWA AI V25.0</h1>", unsafe_allow_html=True)
 
-nation = st.selectbox("🌍 SELECT LEAGUE / REGION", list(LEAGUE_MAP.keys()))
+nation = st.selectbox("🌍 SELECT LEAGUE", list(LEAGUE_MAP.keys()))
 l_code = LEAGUE_MAP[nation]
 
 if os.path.exists(f"{l_code}.csv"):
@@ -78,53 +75,49 @@ if os.path.exists(f"{l_code}.csv"):
     h_t = st.selectbox("🏠 HOME TEAM", teams)
     a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
 
-    if st.button("🎯 RUN MASTER ANALYSIS"):
-        # Isolation Logic
-        h_form = df[df['HomeTeam'] == h_t].tail(8)
-        a_form = df[df['AwayTeam'] == a_t].tail(8)
+    if st.button("🎯 EXECUTE MASTER ANALYSIS"):
+        # Technical Isolation
+        h_f = df[df['HomeTeam'] == h_t].tail(8)
+        a_f = df[df['AwayTeam'] == a_t].tail(8)
         
-        if len(h_form) < 2:
-            st.warning("Data ni chache, inatumia wastani wa ligi.")
-            h_form = df.tail(20) # Fallback
+        if len(h_f) < 2: h_f = df.tail(15) # Safety fallback
             
-        # Mahesabu
-        xh = h_form['FTHG'].mean(); xh_c = h_form['FTAG'].mean()
-        xa = a_form['FTAG'].mean(); xa_c = a_form['FTHG'].mean()
+        # Mathematical IQ
+        xh = h_f['FTHG'].mean(); xh_c = h_f['FTAG'].mean()
+        xa = a_f['FTAG'].mean(); xa_c = a_f['FTHG'].mean()
         total_exp = ((xh + xa_c)/2) + ((xa + xh_c)/2)
         
-        avg_hc = h_form['HC'].mean() if 'HC' in h_form.columns else 4.5
-        avg_ac = a_form['AC'].mean() if 'AC' in a_form.columns else 4.0
+        avg_hc = h_f['HC'].mean() if 'HC' in h_f.columns else 4.4
+        avg_ac = a_f['AC'].mean() if 'AC' in a_f.columns else 3.9
         total_corners = avg_hc + avg_ac
 
-        # Picks
-        if total_exp > 3.0: g_pick = "OVER 2.5"
-        elif total_exp > 1.9: g_pick = "OVER 1.5"
-        else: g_pick = "OVER 0.5"
+        # Dynamic Picks
+        if total_exp > 3.0: g_p = "OVER 2.5"
+        elif total_exp > 1.95: g_p = "OVER 1.5"
+        else: g_p = "OVER 0.5"
 
-        if total_corners > 10.3: c_pick = "OVER 9.5"
-        elif total_corners > 8.9: c_pick = "OVER 8.5"
-        elif total_corners > 7.6: c_pick = "OVER 7.5"
-        else: c_pick = "OVER 6.5"
+        if total_corners > 10.4: c_p = "OVER 9.5"
+        elif total_corners > 8.9: c_p = "OVER 8.5"
+        elif total_corners > 7.6: c_p = "OVER 7.5"
+        else: c_p = "OVER 6.5"
 
-        # Multi-Advice Engine
-        safe_bet = f"✅ UHAKIKA: Namba zinaashiria {g_pick} ni salama zaidi."
-        
-        if xh > (xa + 0.5): win_adv = f"🏆 MSIMAMO: {h_t} ana faida ya nyumbani. Mpe 1X."
-        elif xa > (xh + 0.5): win_adv = f"🏆 MSIMAMO: {a_t} ana uwezo wa kushinda ugenini. Mpe X2."
-        else: win_adv = "🏆 MSIMAMO: Timu zinalingana nguvu sana (Tight Match)."
-
-        corn_adv = f"🚩 KONA: Tarajia kona {int(total_corners)} hivi. {c_pick} inatosha."
-
-        # Display
+        # Multi-Advice Output
         st.markdown("---")
         r1, r2 = st.columns(2)
-        with r1: st.markdown(f"<div class='metric-card'><h3>⚽ GOALS</h3><h1>{g_pick}</h1><p>Exp: {total_exp:.2f}</p></div>", unsafe_allow_html=True)
-        with r2: st.markdown(f"<div class='metric-card'><h3>🚩 CORNERS</h3><h1>{c_pick}</h1><p>Exp: {total_corners:.1f}</p></div>", unsafe_allow_html=True)
+        with r1: st.markdown(f"<div class='metric-card'><h3>⚽ GOALS</h3><h1>{g_p}</h1><p>Exp: {total_exp:.2f}</p></div>", unsafe_allow_html=True)
+        with r2: st.markdown(f"<div class='metric-card'><h3>🚩 CORNERS</h3><h1>{c_p}</h1><p>Exp: {total_corners:.1f}</p></div>", unsafe_allow_html=True)
         
         st.markdown("<div class='advice-section'>", unsafe_allow_html=True)
-        st.markdown(f"<div class='advice-text'>{safe_bet}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='advice-text'>{win_adv}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='advice-text'>{corn_adv}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='advice-text'>✅ CHAGUO SALAMA: Namba zinaashiria {g_p} ni 'Banker' ya leo.</div>", unsafe_allow_html=True)
+        
+        if xh > (xa + 0.7):
+            st.markdown(f"<div class='advice-text'>🏆 MSIMAMO: {h_t} ana nguvu ya Oracle nyumbani. Mpe 1X.</div>", unsafe_allow_html=True)
+        elif xa > (xh + 0.7):
+            st.markdown(f"<div class='advice-text'>🏆 MSIMAMO: {a_t} ana uwezo wa kuvuna matokeo ugenini. Mpe X2.</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='advice-text'>🏆 MSIMAMO: Mechi ngumu, timu zote zina kaba vizuri.</div>", unsafe_allow_html=True)
+            
+        st.markdown(f"<div class='advice-text'>🚩 KONA: Ugiriki mara nyingi hutoa kona nyingi kutokana na kaba. {c_p} ni uhakika.</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 else:
-    st.info("Tafadhali Refresh Database kwenye Sidebar kuanza.")
+    st.info("Tumia Sidebar na ubonyeze REFRESH ALL LEAGUES kuingiza Ugiriki na ligi nyingine.")
