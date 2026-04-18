@@ -5,7 +5,7 @@ import requests
 from io import StringIO
 
 # --- 1. UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V33.0 - EXPRESS", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI V33.5 - MILLIONAIRE", layout="wide")
 
 st.markdown("""
     <style>
@@ -18,70 +18,96 @@ st.markdown("""
         background: #1A1C24; padding: 20px; border-radius: 15px; 
         border-left: 10px solid #00FF00; margin-bottom: 15px;
     }
-    .status-safe { color: #00FF00; font-size: 1.5em; font-weight: 900; }
+    .status-safe { color: #00FF00; font-size: 1.4em; font-weight: 900; }
     .status-warning { color: #FFFF00; font-size: 1.2em; font-weight: bold; }
     .status-danger { color: #FF4B4B; font-size: 1.1em; font-weight: bold; }
     h1, h3 { color: #00FF00; text-align: center; text-transform: uppercase; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA LOAD (Simplified for brevity) ---
-LEAGUE_MAP = {"ENGLAND": "E0", "SPAIN": "SP1", "ITALY": "I1", "GERMANY": "D1", "GREECE": "G1", "SCOTLAND": "SC0"}
+# --- 2. THE GLOBAL UPDATE ENGINE ---
+LEAGUE_MAP = {
+    "ENGLAND": "E0", "SPAIN": "SP1", "ITALY": "I1", "GERMANY": "D1", "FRANCE": "F1", 
+    "GREECE": "G1", "SCOTLAND": "SC0", "TURKEY": "T1", "NETHERLANDS": "N1", "BELGIUM": "B1"
+}
 
-# --- 3. THE EXPRESS ENGINE ---
-st.markdown("<h1>MKULUNGWA AI V33.0</h1>", unsafe_allow_html=True)
-st.markdown("### 🚂 TRENI LA MILIONI MOJA - SYSTEM CHECK")
+with st.sidebar:
+    st.header("🛰️ SATELITE CONTROL")
+    st.write("Sasisha data za mechi za leo hapa:")
+    if st.button("🔄 UPDATE DATA YA DUNIA"):
+        with st.spinner("Inavuta data mpya ya dunia..."):
+            all_dfs = []
+            for name, code in LEAGUE_MAP.items():
+                url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
+                try:
+                    r = requests.get(url, timeout=15)
+                    if r.status_code == 200:
+                        with open(f"{code}.csv", 'wb') as f:
+                            f.write(r.content)
+                        temp_df = pd.read_csv(StringIO(r.text))
+                        if not temp_df.empty:
+                            essential = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HC', 'AC']
+                            all_dfs.append(temp_df[[c for c in essential if c in temp_df.columns]])
+                except:
+                    continue
+            st.success("✅ DATA IMEKAA SAWA!")
 
-nation = st.selectbox("🌍 CHAGUA LIGI YA TRENI", list(LEAGUE_MAP.keys()))
+# --- 3. ANALYZER ENGINE ---
+st.markdown("<h1>MKULUNGWA AI V33.5</h1>", unsafe_allow_html=True)
+st.markdown("### 🚂 MFUMO WA TRENI LA MILIONI MOJA")
 
-if os.path.exists(f"{LEAGUE_MAP[nation]}.csv"):
-    df = pd.read_csv(f"{LEAGUE_MAP[nation]}.csv")
+nation = st.selectbox("🌍 CHAGUA LIGI", list(LEAGUE_MAP.keys()))
+
+file_path = f"{LEAGUE_MAP[nation]}.csv"
+if os.path.exists(file_path):
+    df = pd.read_csv(file_path)
     teams = sorted([str(t) for t in df['HomeTeam'].dropna().unique()])
-    h_t = st.selectbox("🏠 HOME TEAM", teams)
-    a_t = st.selectbox("🚀 AWAY TEAM", [t for t in teams if t != h_t])
+    h_t = st.selectbox("🏠 TIMU YA NYUMBANI", teams)
+    a_t = st.selectbox("🚀 TIMU YA UGENINI", [t for t in teams if t != h_t])
 
-    if st.button("🚀 CHAMBUA KWA AJILI YA TRENI"):
+    if st.button("🎯 ANZA UCHAMBUZI WA KITALAMU"):
         h_f = df[df['HomeTeam'] == h_t].tail(8)
         a_f = df[df['AwayTeam'] == a_t].tail(8)
         
-        # Data Stats
+        # Calculations
         avg_g = (h_f['FTHG'].mean() + a_f['FTAG'].mean())
         avg_c = (h_f['HC'].mean() + a_f['AC'].mean())
         
         st.markdown("---")
-        
-        # LOGIC YA TRENI (THE SNIPER FILTER)
-        is_goal_safe = avg_g > 2.2
-        is_corner_safe = avg_c > 10.8
-        
         st.markdown("<div class='express-card'>", unsafe_allow_html=True)
         
-        # 1. Corner Verdict
-        if is_corner_safe:
-            st.markdown(f"<span class='status-safe'>✅ KONA: UHAKIKA WA TRENI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
-            st.write(f"Soko: **OVER 7.5 CORNERS** (Ushindi 92%)")
-        elif avg_c > 9.0:
-            st.markdown(f"<span class='status-warning'>⚠️ KONA: SALAMA KIASI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
-            st.write(f"Soko: **OVER 6.5 CORNERS** (Ushindi 85%)")
+        # --- KONA SECTION ---
+        st.markdown("### 🚩 KONA (CORNERS)")
+        if avg_c >= 11.0:
+            st.markdown(f"<span class='status-safe'>🟢 KIJANI (BANKER): UHAKIKA WA TRENI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
+            st.write("Mkakati: **BET OVER 8.5** (Kama haipo, weka **OVER 7.5**)")
+        elif avg_c >= 9.0:
+            st.markdown(f"<span class='status-warning'>🟡 NJANO (SAFE): SALAMA KIASI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
+            st.write("Mkakati: **BET OVER 7.5** (Kama haipo, weka **OVER 6.5**)")
         else:
-            st.markdown(f"<span class='status-danger'>❌ KONA: USIWEKE KWENYE TRENI</span>", unsafe_allow_html=True)
+            st.markdown(f"<span class='status-danger'>❌ NYEKUNDU: USIWEKE KWENYE TRENI</span>", unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
 
-        # 2. Goal Verdict
-        if is_goal_safe:
-            st.markdown(f"<span class='status-safe'>✅ MAGOLI: UHAKIKA WA TRENI (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
-            st.write(f"Soko: **OVER 0.5 GOALS** (Ushindi 98%)")
+        # --- MAGOLI SECTION (DYNAMIC) ---
+        st.markdown("### ⚽ MAGOLI (GOALS)")
+        if avg_g >= 3.2:
+            st.markdown(f"<span class='status-safe'>🔥 MAGOLI: UHAKIKA WA OVER 2.5 (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
+            st.write("Ushauri: **OVER 2.5 GOALS** (Odds Kubwa)")
+        elif avg_g >= 2.2:
+            st.markdown(f"<span class='status-safe'>✅ MAGOLI: UHAKIKA WA OVER 1.5 (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
+            st.write("Ushauri: **OVER 1.5 GOALS** (Treni Safe)")
+        elif avg_g >= 1.2:
+            st.markdown(f"<span class='status-warning'>⚠️ MAGOLI: OVER 0.5 TU (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
+            st.write("Ushauri: **OVER 0.5 GOALS**")
         else:
-            st.markdown(f"<span class='status-warning'>⚠️ MAGOLI: WEKA KWA TAHADHARI</span>", unsafe_allow_html=True)
-            st.write(f"Soko: **OVER 0.5 GOALS** (Inafaa kama nyongeza tu)")
+            st.markdown(f"<span class='status-danger'>🛑 TAHADHARI: MECHI YA UNDER (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
+            st.write("Ushauri: **UNDER 3.5 GOALS**")
 
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # FINAL EXPRESS ADVICE
-        if is_corner_safe and is_goal_safe:
-            st.success("🏆 HII NI MECHI YA MILIONI! Iweke kwenye treni bila wasiwasi.")
-        elif is_corner_safe or is_goal_safe:
-            st.warning("⚖️ MECHI YA KAWAIDA: Iweke kama una timu chache.")
-        else:
-            st.error("🛑 RISK: Achana na hii mechi kwenye treni ya siku 5.")
+        # HITIMISHO YA MILIONI
+        if avg_c >= 10.8 and avg_g >= 2.2:
+            st.success("🏆 HII NI 'MASTERPIECE'! Inafaa kuongeza dau kwenye mkeka wa leo.")
+else:
+    st.info("Fungua Sidebar (kushoto) na ubonyeze UPDATE DATA YA DUNIA kuanza.")
