@@ -1,113 +1,88 @@
 import streamlit as st
 import pandas as pd
-import os
+import numpy as np
 import requests
-from io import StringIO
+from scipy.stats import poisson
+from sklearn.ensemble import RandomForestClassifier
 
-# --- 1. UI SETUP ---
-st.set_page_config(page_title="MKULUNGWA AI V33.5 - MILLIONAIRE", layout="wide")
+# ================= UI =================
+st.set_page_config(page_title="AI BETTING ENGINE", layout="wide")
+st.title("🧠 AI BETTING DECISION ENGINE")
 
-st.markdown("""
-    <style>
-    .main { background-color: #0E1117; color: #E0E0E0; }
-    .stButton>button { 
-        background: linear-gradient(135deg, #00FF00, #004400); 
-        color: white; border-radius: 12px; height: 3.5em; width: 100%; border: 1px solid #00FF00; font-weight: 900;
-    }
-    .express-card { 
-        background: #1A1C24; padding: 20px; border-radius: 15px; 
-        border-left: 10px solid #00FF00; margin-bottom: 15px;
-    }
-    .status-safe { color: #00FF00; font-size: 1.4em; font-weight: 900; }
-    .status-warning { color: #FFFF00; font-size: 1.2em; font-weight: bold; }
-    .status-danger { color: #FF4B4B; font-size: 1.1em; font-weight: bold; }
-    h1, h3 { color: #00FF00; text-align: center; text-transform: uppercase; }
-    </style>
-    """, unsafe_allow_html=True)
+# ================= SAMPLE HISTORICAL DATA =================
+@st.cache_data
+def load_data():
+    data = pd.DataFrame({
+        "home_goals": np.random.randint(0,3,200),
+        "away_goals": np.random.randint(0,3,200),
+        "home_corners": np.random.randint(2,10,200),
+        "away_corners": np.random.randint(2,10,200),
+    })
+    data["total_goals"] = data["home_goals"] + data["away_goals"]
+    data["over25"] = (data["total_goals"] >= 3).astype(int)
+    return data
 
-# --- 2. THE GLOBAL UPDATE ENGINE ---
-LEAGUE_MAP = {
-    "ENGLAND": "E0", "SPAIN": "SP1", "ITALY": "I1", "GERMANY": "D1", "FRANCE": "F1", 
-    "GREECE": "G1", "SCOTLAND": "SC0", "TURKEY": "T1", "NETHERLANDS": "N1", "BELGIUM": "B1"
-}
+df = load_data()
 
-with st.sidebar:
-    st.header("🛰️ SATELITE CONTROL")
-    st.write("Sasisha data za mechi za leo hapa:")
-    if st.button("🔄 UPDATE DATA YA DUNIA"):
-        with st.spinner("Inavuta data mpya ya dunia..."):
-            all_dfs = []
-            for name, code in LEAGUE_MAP.items():
-                url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
-                try:
-                    r = requests.get(url, timeout=15)
-                    if r.status_code == 200:
-                        with open(f"{code}.csv", 'wb') as f:
-                            f.write(r.content)
-                        temp_df = pd.read_csv(StringIO(r.text))
-                        if not temp_df.empty:
-                            essential = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HC', 'AC']
-                            all_dfs.append(temp_df[[c for c in essential if c in temp_df.columns]])
-                except:
-                    continue
-            st.success("✅ DATA IMEKAA SAWA!")
+# ================= FEATURES =================
+X = df[["home_goals","away_goals","home_corners","away_corners"]]
+y = df["over25"]
 
-# --- 3. ANALYZER ENGINE ---
-st.markdown("<h1>MKULUNGWA AI V33.5</h1>", unsafe_allow_html=True)
-st.markdown("### 🚂 MFUMO WA TRENI LA MILIONI MOJA")
+model = RandomForestClassifier(n_estimators=200)
+model.fit(X, y)
 
-nation = st.selectbox("🌍 CHAGUA LIGI", list(LEAGUE_MAP.keys()))
+# ================= FUNCTIONS =================
+def poisson_model(h,a):
+    return min(0.9, (h+a)/3)
 
-file_path = f"{LEAGUE_MAP[nation]}.csv"
-if os.path.exists(file_path):
-    df = pd.read_csv(file_path)
-    teams = sorted([str(t) for t in df['HomeTeam'].dropna().unique()])
-    h_t = st.selectbox("🏠 TIMU YA NYUMBANI", teams)
-    a_t = st.selectbox("🚀 TIMU YA UGENINI", [t for t in teams if t != h_t])
+def market_prob(odds):
+    return 1/odds
 
-    if st.button("🎯 ANZA UCHAMBUZI WA KITALAMU"):
-        h_f = df[df['HomeTeam'] == h_t].tail(8)
-        a_f = df[df['AwayTeam'] == a_t].tail(8)
-        
-        # Calculations
-        avg_g = (h_f['FTHG'].mean() + a_f['FTAG'].mean())
-        avg_c = (h_f['HC'].mean() + a_f['AC'].mean())
-        
-        st.markdown("---")
-        st.markdown("<div class='express-card'>", unsafe_allow_html=True)
-        
-        # --- KONA SECTION ---
-        st.markdown("### 🚩 KONA (CORNERS)")
-        if avg_c >= 11.0:
-            st.markdown(f"<span class='status-safe'>🟢 KIJANI (BANKER): UHAKIKA WA TRENI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
-            st.write("Mkakati: **BET OVER 8.5** (Kama haipo, weka **OVER 7.5**)")
-        elif avg_c >= 9.0:
-            st.markdown(f"<span class='status-warning'>🟡 NJANO (SAFE): SALAMA KIASI (Exp {avg_c:.1f})</span>", unsafe_allow_html=True)
-            st.write("Mkakati: **BET OVER 7.5** (Kama haipo, weka **OVER 6.5**)")
-        else:
-            st.markdown(f"<span class='status-danger'>❌ NYEKUNDU: USIWEKE KWENYE TRENI</span>", unsafe_allow_html=True)
+def edge(p_ai, p_market, odds):
+    return (p_ai - p_market) * odds
 
-        st.markdown("<hr>", unsafe_allow_html=True)
+# ================= INPUT =================
+st.subheader("🎯 Analyze Match")
 
-        # --- MAGOLI SECTION (DYNAMIC) ---
-        st.markdown("### ⚽ MAGOLI (GOALS)")
-        if avg_g >= 3.2:
-            st.markdown(f"<span class='status-safe'>🔥 MAGOLI: UHAKIKA WA OVER 2.5 (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
-            st.write("Ushauri: **OVER 2.5 GOALS** (Odds Kubwa)")
-        elif avg_g >= 2.2:
-            st.markdown(f"<span class='status-safe'>✅ MAGOLI: UHAKIKA WA OVER 1.5 (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
-            st.write("Ushauri: **OVER 1.5 GOALS** (Treni Safe)")
-        elif avg_g >= 1.2:
-            st.markdown(f"<span class='status-warning'>⚠️ MAGOLI: OVER 0.5 TU (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
-            st.write("Ushauri: **OVER 0.5 GOALS**")
-        else:
-            st.markdown(f"<span class='status-danger'>🛑 TAHADHARI: MECHI YA UNDER (Exp {avg_g:.2f})</span>", unsafe_allow_html=True)
-            st.write("Ushauri: **UNDER 3.5 GOALS**")
+home = st.number_input("Home Avg Goals", 0.0, 5.0, 1.2)
+away = st.number_input("Away Avg Goals", 0.0, 5.0, 1.0)
+home_c = st.number_input("Home Corners", 0.0, 15.0, 5.0)
+away_c = st.number_input("Away Corners", 0.0, 15.0, 4.0)
+odds = st.number_input("Odds Over 2.5", 1.2, 5.0, 2.0)
 
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # HITIMISHO YA MILIONI
-        if avg_c >= 10.8 and avg_g >= 2.2:
-            st.success("🏆 HII NI 'MASTERPIECE'! Inafaa kuongeza dau kwenye mkeka wa leo.")
+# ================= AI ENGINE =================
+x_input = np.array([[home, away, home_c, away_c]])
+
+ml_prob = model.predict_proba(x_input)[0][1]
+poisson_prob = poisson_model(home, away)
+
+p_ai = (ml_prob + poisson_prob) / 2
+p_market = market_prob(odds)
+
+e = edge(p_ai, p_market, odds)
+
+# ================= DECISION =================
+if e > 0.1:
+    decision = "🟢 STRONG BET"
+elif e > 0:
+    decision = "🟡 WEAK BET"
 else:
-    st.info("Fungua Sidebar (kushoto) na ubonyeze UPDATE DATA YA DUNIA kuanza.")
+    decision = "🔴 SKIP"
+
+# ================= OUTPUT =================
+col1, col2, col3 = st.columns(3)
+
+col1.metric("AI Probability", f"{p_ai:.2f}")
+col2.metric("Market Probability", f"{p_market:.2f}")
+col3.metric("Edge", f"{e:.3f}")
+
+st.subheader("📌 Decision")
+st.success(decision)
+
+# ================= EXPLANATION =================
+st.write("""
+### 🧠 How AI thinks:
+- Combines ML + Poisson model
+- Compares with bookmaker odds
+- Only selects value bets (positive edge)
+""")
