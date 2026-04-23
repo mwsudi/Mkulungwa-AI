@@ -6,10 +6,9 @@ from io import StringIO
 from scipy.stats import poisson
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.calibration import CalibratedClassifierCV
 
 # ---------------- 1. UI SETUP ----------------
-st.set_page_config(page_title="TRADING DESK V45.2", layout="wide")
+st.set_page_config(page_title="MKULUNGWA GLOBAL V46", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,10 +23,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1>🌍 GLOBAL TRADING DESK V45.2</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🌍 GLOBAL TRADING DESK V46</h1>", unsafe_allow_html=True)
 
 # ---------------- 2. COUNTRY & LEAGUE MAPPING ----------------
-# Hapa tumepanga Ligi kulingana na Mataifa
 COUNTRY_MAP = {
     "ENGLAND": {"Premier": "E0", "Championship": "E1", "League 1": "E2"},
     "SPAIN": {"La Liga": "SP1", "Segunda": "SP2"},
@@ -42,7 +40,7 @@ COUNTRY_MAP = {
     "SCOTLAND": {"Premiership": "SC0", "Championship": "SC1"}
 }
 
-# ---------------- 3. DATA ENGINE ----------------
+# ---------------- 3. DATA ENGINE (Auto-Update) ----------------
 @st.cache_data(ttl=3600)
 def load_all_data():
     seasons = ["2526", "2425", "2324"]
@@ -58,8 +56,7 @@ def load_all_data():
                         temp_df = pd.read_csv(StringIO(r.text))
                         temp_df['CountryName'] = country
                         temp_df['LeagueName'] = league_name
-                        # Hakikisha vigezo vya lazima vipo
-                        cols = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HC', 'AC', 'CountryName', 'LeagueName']
+                        cols = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'CountryName', 'LeagueName']
                         available_cols = [c for c in cols if c in temp_df.columns]
                         dfs.append(temp_df[available_cols].dropna())
                 except:
@@ -81,23 +78,33 @@ def process_features(df):
 
 df_processed = process_features(df_raw)
 
-# ---------------- 5. AI MODEL CORE ----------------
+# ---------------- 5. AI MODEL (With Error Protection) ----------------
 FEATS = ['hg', 'ag']
 X = df_processed[FEATS]
 y = df_processed['over25']
 
-model_path = "global_v45_2.pkl"
+# Tumeulipa jina jipya kabisa ili tuepuke mgongano
+model_path = "v46_ultimate_global.pkl"
+
+def train_new_model():
+    rf = RandomForestClassifier(n_estimators=300).fit(X, y)
+    lr = LogisticRegression().fit(X, y)
+    model_obj = {"rf": rf, "lr": lr}
+    joblib.dump(model_obj, model_path)
+    return model_obj
+
 if os.path.exists(model_path):
-    model = joblib.load(model_path)
+    try:
+        model = joblib.load(model_path)
+    except:
+        # Hapa ndipo ulinzi ulipo: Kama ikigoma, inafuta na kufundisha upya
+        os.remove(model_path)
+        model = train_new_model()
 else:
-    with st.spinner("🧠 Inafundisha AI kwa mataifa yote..."):
-        rf = RandomForestClassifier(n_estimators=300).fit(X, y)
-        lr = LogisticRegression().fit(X, y)
-        model = {"rf": rf, "lr": lr}
-        joblib.dump(model, model_path)
+    model = train_new_model()
 
 # ---------------- 6. MAIN INTERFACE ----------------
-st.subheader("🎯 Sniper Match Analyzer")
+st.subheader("🎯 Global Sniper Analyzer")
 
 c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 2, 2, 1])
 
@@ -105,11 +112,10 @@ with c1:
     country_choice = st.selectbox("MATAFA", sorted(list(COUNTRY_MAP.keys())))
 
 with c2:
-    # Hapa tunapata ligi za nchi uliyochagua tu
     available_leagues = list(COUNTRY_MAP[country_choice].keys())
     league_choice = st.selectbox("LIGI", available_leagues)
 
-# Chuja timu kulingana na Nchi na Ligi
+# Filter timu
 mask = (df_raw['CountryName'] == country_choice) & (df_raw['LeagueName'] == league_choice)
 teams_list = sorted(df_raw[mask]['HomeTeam'].unique())
 
@@ -124,16 +130,19 @@ a_stats = df_processed[df_processed['AwayTeam'] == away].tail(1)
 if not h_stats.empty and not a_stats.empty:
     hg, ag = h_stats['hg'].values[0], a_stats['ag'].values[0]
     
-    prob = (model["rf"].predict_proba([[hg, ag]])[0][1] + model["lr"].predict_proba([[hg, ag]])[0][1]) / 2
+    # Probability calculations
+    p_rf = model["rf"].predict_proba([[hg, ag]])[0][1]
+    p_lr = model["lr"].predict_proba([[hg, ag]])[0][1]
+    prob = (p_rf + p_lr) / 2
     value = (prob * odds) - 1
 
     st.markdown("<div class='elite-card'>", unsafe_allow_html=True)
     
     m1, m2, m3 = st.columns(3)
     m1.metric("AI PROBABILITY", f"{prob*100:.1f}%")
-    m2.metric("EXPECTED VALUE", f"{value:.2f}")
+    m2.metric("EXPECTED VALUE", f"{value:.2f}", delta=f"{value*100:.1f}%")
     
-    if prob > 0.70 and value > 0.1:
+    if prob > 0.70 and value > 0.05:
         signal, color = "🔥 ELITE TRADE", "#00FF00"
     elif prob > 0.60:
         signal, color = "⚡ HIGH TRADE", "#CCFF00"
@@ -142,5 +151,15 @@ if not h_stats.empty and not a_stats.empty:
         
     st.markdown(f"<h2 style='color:{color};'>SIGNAL: {signal}</h2>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Portfolio Tracking
+    if st.button("➕ Add to Train"):
+        if "picks" not in st.session_state: st.session_state.picks = []
+        st.session_state.picks.append({"Match": f"{home} vs {away}", "Prob": f"{prob*100:.1f}%", "Odds": odds})
+        st.success("Imewekwa kwenye mkeka!")
+
+    if "picks" in st.session_state and st.session_state.picks:
+        st.table(st.session_state.picks)
+
 else:
-    st.info("Chagua timu kuanza uchambuzi wa kitalamu.")
+    st.info("Chagua timu kuanza uchambuzi.")
