@@ -1,162 +1,191 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import requests, joblib, os
+import requests, os, joblib
 from io import StringIO
-from scipy.stats import poisson
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
-# ---------------- 1. UI SETUP ----------------
-st.set_page_config(page_title="MKULUNGWA GLOBAL V46.1", layout="wide")
+# ---------------- CONFIG ----------------
+st.set_page_config(page_title="MKULUNGWA GOD MODE", layout="wide")
+st.title("🧠⚡ MKULUNGWA – AI BETTING ENGINE")
 
-st.markdown("""
-    <style>
-    .main { background-color: #05070A; color: #E0E0E0; }
-    .stMetric { background: #10141D; padding: 15px; border-radius: 12px; border: 1px solid #00FF00; }
-    .elite-card { 
-        background: #0A0F14; padding: 25px; border-radius: 15px; 
-        border: 1px solid #00FF00; margin-bottom: 20px;
-    }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #00FF00; color: black; font-weight: bold; }
-    h1, h2, h3 { color: #00FF00; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
-    </style>
-    """, unsafe_allow_html=True)
+MODEL_PATH = "god_mode_model.pkl"
+ODDS_API_KEY = st.secrets.get("ODDS_API_KEY", "")
 
-st.markdown("<h1>🌍 GLOBAL TRADING DESK V46.1</h1>", unsafe_allow_html=True)
-
-# ---------------- 2. ADMIN TOOLS (Vitufe vya Juu) ----------------
-st.subheader("🛠️ SYSTEM CONTROL CENTER")
-col_tool1, col_tool2 = st.columns(2)
-
-model_path = "v46_ultimate_global.pkl"
-
-with col_tool1:
-    if st.button("🔄 REFRESH DATA & RETRAIN AI"):
-        if os.path.exists(model_path):
-            os.remove(model_path)
-        st.cache_data.clear()
-        st.success("Mfumo umesafishwa! AI inaanza kujifunza upya sasa hivi...")
-        st.rerun()
-
-with col_tool2:
-    if st.button("🧹 CLEAR ALL SELECTIONS"):
-        st.cache_data.clear()
-        st.rerun()
-
-st.markdown("---")
-
-# ---------------- 3. COUNTRY & LEAGUE MAPPING ----------------
+# ---------------- LEAGUES ----------------
 COUNTRY_MAP = {
-    "ENGLAND": {"Premier": "E0", "Championship": "E1", "League 1": "E2"},
-    "SPAIN": {"La Liga": "SP1", "Segunda": "SP2"},
-    "GERMANY": {"Bundesliga 1": "D1", "Bundesliga 2": "D2"},
-    "ITALY": {"Serie A": "I1", "Serie B": "I2"},
-    "FRANCE": {"Ligue 1": "F1", "Ligue 2": "F2"},
-    "NETHERLANDS": {"Eredivisie": "N1"},
-    "BELGIUM": {"Pro League": "B1"},
-    "PORTUGAL": {"Liga I": "P1"},
-    "TURKEY": {"Super Lig": "T1"},
-    "GREECE": {"Super League": "G1"},
-    "SCOTLAND": {"Premiership": "SC0", "Championship": "SC1"}
+    "ENGLAND": {"Premier": "E0", "Championship": "E1"},
+    "SPAIN": {"La Liga": "SP1"},
+    "GERMANY": {"Bundesliga": "D1"},
+    "ITALY": {"Serie A": "I1"},
+    "FRANCE": {"Ligue 1": "F1"}
 }
 
-# ---------------- 4. DATA ENGINE ----------------
+# ---------------- LOAD DATA ----------------
 @st.cache_data(ttl=3600)
-def load_all_data():
-    seasons = ["2526", "2425", "2324"]
+def load_data():
+    seasons = ["2425","2324"]
     dfs = []
     for s in seasons:
-        for country, leagues in COUNTRY_MAP.items():
-            for league_name, code in leagues.items():
+        for c in COUNTRY_MAP:
+            for lg, code in COUNTRY_MAP[c].items():
                 try:
                     url = f"https://www.football-data.co.uk/mmz4281/{s}/{code}.csv"
                     r = requests.get(url, timeout=10)
-                    if r.status_code == 200:
-                        temp_df = pd.read_csv(StringIO(r.text))
-                        temp_df['CountryName'] = country
-                        temp_df['LeagueName'] = league_name
-                        cols = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'CountryName', 'LeagueName']
-                        available_cols = [c for c in cols if c in temp_df.columns]
-                        dfs.append(temp_df[available_cols].dropna())
-                except: continue
-    full_df = pd.concat(dfs, ignore_index=True)
-    full_df['total'] = full_df['FTHG'] + full_df['FTAG']
-    full_df['over25'] = (full_df['total'] >= 3).astype(int)
-    return full_df
+                    df = pd.read_csv(StringIO(r.text))
+                    df["Country"], df["League"] = c, lg
+                    dfs.append(df[['HomeTeam','AwayTeam','FTHG','FTAG','Country','League']])
+                except:
+                    pass
+    df = pd.concat(dfs)
+    df['total'] = df['FTHG'] + df['FTAG']
+    df['over25'] = (df['total'] >= 3).astype(int)
+    return df
 
-df_raw = load_all_data()
+df = load_data()
 
-# ---------------- 5. FEATURE ENGINEERING ----------------
-def process_features(df):
+# ---------------- FEATURES ----------------
+def features(df):
     df = df.copy()
-    df['hg'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.rolling(10, min_periods=1).mean())
-    df['ag'] = df.groupby('AwayTeam')['FTAG'].transform(lambda x: x.rolling(10, min_periods=1).mean())
-    return df.dropna(subset=['hg', 'ag'])
+    df['hg'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.rolling(5).mean())
+    df['ag'] = df.groupby('AwayTeam')['FTAG'].transform(lambda x: x.rolling(5).mean())
+    df['hc'] = df.groupby('HomeTeam')['FTAG'].transform(lambda x: x.rolling(5).mean())
+    df['ac'] = df.groupby('AwayTeam')['FTHG'].transform(lambda x: x.rolling(5).mean())
+    df['hs'] = df['hg'] - df['hc']
+    df['as_'] = df['ag'] - df['ac']
+    return df.dropna()
 
-df_processed = process_features(df_raw)
+df = features(df)
 
-# ---------------- 6. AI MODEL ENGINE ----------------
-FEATS = ['hg', 'ag']
-X = df_processed[FEATS]
-y = df_processed['over25']
+FEATS = ['hg','ag','hc','ac','hs','as_']
+X = df[FEATS]
+y = df['over25']
 
-def train_new_model():
-    rf = RandomForestClassifier(n_estimators=300).fit(X, y)
-    lr = LogisticRegression().fit(X, y)
-    model_obj = {"rf": rf, "lr": lr}
-    joblib.dump(model_obj, model_path)
-    return model_obj
+# ---------------- MODEL ----------------
+def train():
+    rf = RandomForestClassifier(n_estimators=300).fit(X,y)
+    lr = LogisticRegression(max_iter=500).fit(X,y)
+    m = {"rf":rf,"lr":lr}
+    joblib.dump(m, MODEL_PATH)
+    return m
 
-if os.path.exists(model_path):
+if os.path.exists(MODEL_PATH):
     try:
-        model = joblib.load(model_path)
+        model = joblib.load(MODEL_PATH)
     except:
-        os.remove(model_path)
-        model = train_new_model()
+        model = train()
 else:
-    model = train_new_model()
+    model = train()
 
-# ---------------- 7. MAIN INTERFACE ----------------
-st.subheader("🎯 Sniper Match Analyzer")
+# ---------------- POISSON ----------------
+def poisson(h,a):
+    return min(0.95,(h+a)/3)
 
-c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 2, 2, 1])
+# ---------------- ODDS ----------------
+@st.cache_data(ttl=300)
+def load_odds():
+    if not ODDS_API_KEY:
+        return pd.DataFrame()
+    url = "https://api.the-odds-api.com/v4/sports/soccer/odds"
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "regions": "eu",
+        "markets": "totals",
+        "oddsFormat": "decimal"
+    }
+    try:
+        r = requests.get(url, params=params)
+        data = r.json()
+    except:
+        return pd.DataFrame()
 
-with c1: country_choice = st.selectbox("MATAFA", sorted(list(COUNTRY_MAP.keys())))
-with c2:
-    available_leagues = list(COUNTRY_MAP[country_choice].keys())
-    league_choice = st.selectbox("LIGI", available_leagues)
+    rows=[]
+    for ev in data:
+        home = ev.get("home_team")
+        away = [t for t in ev.get("teams",[]) if t!=home]
+        away = away[0] if away else None
 
-mask = (df_raw['CountryName'] == country_choice) & (df_raw['LeagueName'] == league_choice)
-teams_list = sorted(df_raw[mask]['HomeTeam'].unique())
+        best=None
+        for bk in ev.get("bookmakers",[]):
+            for mk in bk.get("markets",[]):
+                if mk.get("key")=="totals":
+                    for o in mk.get("outcomes",[]):
+                        if o.get("name")=="Over" and float(o.get("point",0))==2.5:
+                            price=o.get("price")
+                            if price:
+                                best=max(best or 0,price)
+        if home and away and best:
+            rows.append({"HomeTeam":home,"AwayTeam":away,"odds":best})
+    return pd.DataFrame(rows)
 
-with c3: home = st.selectbox("HOME TEAM", teams_list)
-with c4: away = st.selectbox("AWAY TEAM", [t for t in teams_list if t != home])
-with c5: odds = st.number_input("ODDS (O2.5)", value=1.90, step=0.01)
+odds_df = load_odds()
 
-# --- PREDICTION ENGINE ---
-h_stats = df_processed[df_processed['HomeTeam'] == home].tail(1)
-a_stats = df_processed[df_processed['AwayTeam'] == away].tail(1)
+# ---------------- PREDICT ----------------
+def predict(h,a):
+    h_row = df[df['HomeTeam']==h].tail(1)
+    a_row = df[df['AwayTeam']==a].tail(1)
+    if h_row.empty or a_row.empty:
+        return None
 
-if not h_stats.empty and not a_stats.empty:
-    hg, ag = h_stats['hg'].values[0], a_stats['ag'].values[0]
-    p_rf = model["rf"].predict_proba([[hg, ag]])[0][1]
-    p_lr = model["lr"].predict_proba([[hg, ag]])[0][1]
-    prob = (p_rf + p_lr) / 2
-    value = (prob * odds) - 1
+    hg=h_row['hg'].values[0]
+    ag=a_row['ag'].values[0]
+    hc=h_row['hc'].values[0]
+    ac=a_row['ac'].values[0]
+    hs=h_row['hs'].values[0]
+    as_=a_row['as_'].values[0]
 
-    st.markdown("<div class='elite-card'>", unsafe_allow_html=True)
-    m1, m2, m3 = st.columns(3)
-    m1.metric("AI PROBABILITY", f"{prob*100:.1f}%")
-    m2.metric("EXPECTED VALUE", f"{value:.2f}", delta=f"{value*100:.1f}%")
-    
-    if prob > 0.70 and value > 0.05:
-        signal, color = "🔥 ELITE TRADE", "#00FF00"
-    elif prob > 0.60:
-        signal, color = "⚡ HIGH TRADE", "#CCFF00"
-    else:
-        signal, color = "❌ NO TRADE", "#FF4B4B"
-    st.markdown(f"<h2 style='color:{color};'>SIGNAL: {signal}</h2>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    f=[[hg,ag,hc,ac,hs,as_]]
+
+    p1=model["rf"].predict_proba(f)[0][1]
+    p2=model["lr"].predict_proba(f)[0][1]
+    p3=poisson(hg,ag)
+
+    return (0.5*p1+0.3*p2+0.2*p3)
+
+# ---------------- UI ----------------
+st.subheader("📡 LIVE SIGNALS")
+
+if odds_df.empty:
+    st.warning("Hakuna odds (weka API baadaye)")
 else:
-    st.info("Chagua timu kuanza uchambuzi.")
+    results=[]
+    for _,r in odds_df.iterrows():
+        p=predict(r['HomeTeam'],r['AwayTeam'])
+        if p is None: continue
+
+        odds=r['odds']
+        mp=1/odds
+        edge=p-mp
+        value=(p*odds)-1
+
+        results.append({
+            "Match":f"{r['HomeTeam']} vs {r['AwayTeam']}",
+            "Odds":odds,
+            "AI%":round(p*100,1),
+            "Edge%":round(edge*100,1),
+            "Value":round(value,2)
+        })
+
+    table=pd.DataFrame(results).sort_values(by="Edge%",ascending=False)
+    st.dataframe(table)
+
+# ---------------- MANUAL ----------------
+st.subheader("🎯 MANUAL ANALYSIS")
+
+teams=sorted(df['HomeTeam'].unique())
+c1,c2,c3=st.columns(3)
+
+with c1: home=st.selectbox("HOME",teams)
+with c2: away=st.selectbox("AWAY",[t for t in teams if t!=home])
+with c3: odds=st.number_input("ODDS",value=1.9)
+
+p=predict(home,away)
+if p:
+    mp=1/odds
+    edge=p-mp
+    val=(p*odds)-1
+
+    st.metric("AI%",f"{p*100:.1f}")
+    st.metric("EDGE%",f"{edge*100:.1f}")
+    st.metric("VALUE",f"{val:.2f}")
