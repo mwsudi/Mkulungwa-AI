@@ -6,7 +6,7 @@ import requests
 from io import StringIO
 from sklearn.ensemble import RandomForestClassifier
 
-# --- 1. UI SETUP (V36 PRO STYLE) ---
+# --- 1. UI SETUP (MKULUNGWA PRO STYLE) ---
 st.set_page_config(page_title="MKULUNGWA AI V36 PRO - AI DESK", layout="wide")
 
 st.markdown("""
@@ -14,50 +14,55 @@ st.markdown("""
     .main { background-color: #05070A; color: #E0E0E0; }
     .stButton>button { 
         background: linear-gradient(135deg, #00FF00, #008800); 
-        color: white; border-radius: 8px; height: 3.5em; width: 100%; border: none; font-weight: 900;
-        box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.3);
+        color: white; border-radius: 10px; height: 3.8em; width: 100%; border: none; font-weight: 900;
+        box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.4);
+        cursor: pointer;
     }
     .ai-card { 
         background: #10141D; padding: 25px; border-radius: 15px; 
         border: 1px solid #00FF00; margin-bottom: 20px;
     }
-    .metric-box { text-align: center; padding: 10px; background: #1A1C24; border-radius: 10px; border: 1px solid #333; }
-    .status-ultra { color: #00FF00; font-size: 2em; font-weight: 900; text-shadow: 2px 2px #000; }
-    h1 { color: #00FF00; text-align: center; font-family: 'Courier New'; letter-spacing: 5px; }
+    .status-ultra { color: #00FF00; font-size: 1.8em; font-weight: 900; text-shadow: 1px 1px #000; }
+    h1 { color: #00FF00; text-align: center; font-family: 'Arial Black'; letter-spacing: 2px; text-transform: uppercase; }
+    h3 { color: #00FF00; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA ENGINE ---
+# --- 2. DATA LOAD MAP ---
 LEAGUE_MAP = {
     "ENGLAND": "E0", "SPAIN": "SP1", "ITALY": "I1", "GERMANY": "D1", "FRANCE": "F1", 
     "GREECE": "G1", "SCOTLAND": "SC0", "TURKEY": "T1", "NETHERLANDS": "N1", "BELGIUM": "B1"
 }
 
+st.markdown("<h1>MKULUNGWA AI V36 PRO</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center;'>🚀 MFUMO WA TRENI LA MILIONI MOJA</h3>", unsafe_allow_html=True)
+
+# --- 3. SIDEBAR CONTROL ---
 with st.sidebar:
-    st.header("🤖 AI CONTROL PANEL")
-    if st.button("🔄 RETRAIN AI & UPDATE DATA"):
-        with st.spinner("Inavuta Data & Inafunza AI..."):
+    st.header("🛰️ AI SYSTEM CONTROL")
+    st.write("Sasisha data za dunia hapa:")
+    if st.button("🔄 RETRAIN AI (FULL UPDATE)"):
+        with st.spinner("Inavuta Data za Dunia..."):
             for name, code in LEAGUE_MAP.items():
-                url = f"https://www.football-data.co.uk/mmz4281/2425/{code}.csv" # Adjusted for current season
+                # Tunatumia msimu wa 25/26 kama ilivyo kwenye kodi yako
+                url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
                 try:
                     r = requests.get(url, timeout=15)
                     if r.status_code == 200:
                         with open(f"{code}.csv", 'wb') as f:
                             f.write(r.content)
                 except: continue
-            st.success("AI IMESHACHUKUA DATA MPYA!")
+            st.success("✅ DATA NA AI ZIMEKAA SAWA!")
 
-# --- 3. ANALYZER & AI MODEL ---
-st.markdown("<h1>V36 PRO AI DESK</h1>", unsafe_allow_html=True)
-
+# --- 4. ANALYZER ENGINE ---
 nation = st.selectbox("🌍 CHAGUA LIGI YA KIKAZI", list(LEAGUE_MAP.keys()))
 file_path = f"{LEAGUE_MAP[nation]}.csv"
 
 if os.path.exists(file_path):
     df = pd.read_csv(file_path)
     
-    # --- REAL AI CORE (FEATURE ENGINEERING) ---
-    # Tunatengeneza uelewa wa AI hapa
+    # --- 5. FEATURE ENGINEERING (REAL AI CORE) ---
+    # Rolling forms for AI context
     df['home_form'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.rolling(5, min_periods=1).mean())
     df['away_form'] = df.groupby('AwayTeam')['FTAG'].transform(lambda x: x.rolling(5, min_periods=1).mean())
     df['home_attack'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.expanding().mean())
@@ -65,78 +70,80 @@ if os.path.exists(file_path):
     
     df_ai = df.dropna(subset=['home_form', 'away_form', 'home_attack', 'away_attack'])
     
-    # Feature Selection
     features = ['home_form', 'away_form', 'home_attack', 'away_attack']
     X = df_ai[features]
-    y = (df_ai['FTHG'] + df_ai['FTAG'] >= 3).astype(int) # Target: Over 2.5
+    y = (df_ai['FTHG'] + df_ai['FTAG'] >= 3).astype(int) # Target: Over 2.5 Goals
     
-    # Train AI Model (Random Forest)
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train Random Forest Model
+    model = RandomForestClassifier(n_estimators=300, random_state=42)
     model.fit(X, y)
 
     # UI for Team Selection
     teams = sorted([str(t) for t in df['HomeTeam'].dropna().unique()])
     col1, col2 = st.columns(2)
-    with col1: h_t = st.selectbox("🏠 NYUMBANI", teams)
-    with col2: a_t = st.selectbox("🚀 UGENINI", [t for t in teams if t != h_t])
+    with col1: h_t = st.selectbox("🏠 TIMU YA NYUMBANI", teams)
+    with col2: a_t = st.selectbox("🚀 TIMU YA UGENINI", [t for t in teams if t != h_t])
 
-    if st.button("🎯 RUN AI PREDICTION (V36)"):
-        # Get Latest Data for Prediction
-        h_stats = df[df['HomeTeam'] == h_t].iloc[-1]
-        a_stats = df[df['AwayTeam'] == a_t].iloc[-1]
+    if st.button("🎯 ANZA UCHAMBUZI WA V36 PRO"):
+        # Get Stats for Analysis
+        h_stats = df[df['HomeTeam'] == h_t].tail(1)
+        a_stats = df[df['AwayTeam'] == a_t].tail(1)
         
-        input_data = np.array([[h_stats['home_form'], a_stats['away_form'], h_stats['home_attack'], a_stats['away_attack']]])
-        
-        # AI Probabilities
-        ai_prob = model.predict_proba(input_data)[0][1]
-        
-        # Calculations for Corners (Traditional Stats)
+        # Historical stats for display
         h_f = df[df['HomeTeam'] == h_t].tail(8)
         a_f = df[df['AwayTeam'] == a_t].tail(8)
-        avg_c = (h_f['HC'].mean() + a_f['AC'].mean())
+        avg_c = (h_f['HC'].mean() + a_f['AC'].mean()) # Corners
+        
+        # --- AI DECISION LOGIC ---
+        input_data = np.array([[
+            h_f['FTHG'].mean(), 
+            a_f['FTAG'].mean(), 
+            df[df['HomeTeam'] == h_t]['FTHG'].mean(), 
+            df[df['AwayTeam'] == a_t]['FTAG'].mean()
+        ]])
+        
+        ai_prob = model.predict_proba(input_data)[0][1]
 
-        # --- OUTPUT DISPLAY ---
+        # --- DISPLAY RESULTS ---
         st.markdown("<div class='ai-card'>", unsafe_allow_html=True)
         
-        # Rank Engine
-        if ai_prob > 0.75: rank = "🌟 TOP PICK (TRENI BANKER)"
-        elif ai_prob > 0.60: rank = "✅ VALUE BET"
-        else: rank = "⚠️ HIGH RISK"
+        # Ranking Engine
+        if ai_prob > 0.70: rank = "🌟 TOP PICK (MASTERPIECE)"
+        elif ai_prob > 0.55: rank = "✅ VALUE BET (SAFE)"
+        else: rank = "⚠️ HIGH RISK (CAUTION)"
         
         st.write(f"### {rank}")
         
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("AI GOAL PROB", f"{ai_prob*100:.1f}%")
-        with c2: st.metric("xG EXPECTANCY", f"{(h_stats['home_form'] + a_stats['away_form'])/2:.2f}")
-        with c3: st.metric("CORNER EXP", f"{avg_c:.1f}")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("AI GOAL PROB", f"{ai_prob*100:.1f}%")
+        m2.metric("CORNER EXP", f"{avg_c:.1f}")
+        m3.metric("EXPECTED xG", f"{(input_data[0][0] + input_data[0][1]):.2f}")
 
-        st.markdown("---")
+        st.markdown("<hr style='border: 1px solid #333;'>", unsafe_allow_html=True)
         
-        # Decision Logic
+        # Decision Signals
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown("#### ⚽ GOAL SIGNAL")
             if ai_prob > 0.70:
                 st.markdown("<span class='status-ultra'>🔥 OVER 2.5</span>", unsafe_allow_html=True)
-                st.write("AI Inasema: Milango iko wazi leo!")
             elif ai_prob > 0.50:
-                st.markdown("<span class='status-safe'>✅ OVER 1.5</span>", unsafe_allow_html=True)
-                st.write("Ushauri: Hii ni ya treni la uhakika.")
+                st.markdown("<span class='status-ultra' style='color:#FFFF00;'>⚡ OVER 1.5</span>", unsafe_allow_html=True)
             else:
-                st.markdown("<span class='status-danger'>🛑 UNDER 3.5</span>", unsafe_allow_html=True)
-                st.write("Ushauri: Mechi ngumu, goli ni shida.")
+                st.markdown("<span class='status-ultra' style='color:#FF4B4B;'>❌ UNDER 3.5</span>", unsafe_allow_html=True)
 
         with col_b:
             st.markdown("#### 🚩 CORNER SIGNAL")
             if avg_c >= 10.5:
                 st.markdown("<span class='status-ultra'>🚩 OVER 8.5</span>", unsafe_allow_html=True)
+            elif avg_c >= 8.5:
+                st.markdown("<span class='status-ultra' style='color:#FFFF00;'>🚩 OVER 7.5</span>", unsafe_allow_html=True)
             else:
-                st.markdown("<span class='status-warning'>🟡 OVER 7.5</span>", unsafe_allow_html=True)
+                st.markdown("<span class='status-ultra' style='color:#FF4B4B;'>🚩 UNDER RISK</span>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Portfolio Suggestion
-        st.info(f"🛡️ **V36 PORTFOLIO:** Kwa mechi hii, weka 5% tu ya mtaji wako kulingana na AI confidence ya {ai_prob*100:.0f}%.")
-
+        # Staking Plan
+        st.info(f"🛡️ **PORTFOLIO ADVICE:** Kulingana na AI confidence ya {ai_prob*100:.0f}%, weka 2% mpaka 5% tu ya mtaji wako hapa.")
 else:
-    st.warning("⚠️ DATA HAIJAPATIKANA. Bonyeza UPDATE kwenye Sidebar kwanza.")
+    st.info("👋 Karibu Master! Fungua Sidebar (kushoto) na ubonyeze RETRAIN AI ili kupata data mpya ya dunia.")
