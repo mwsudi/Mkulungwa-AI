@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
 # ---------------- 1. UI SETUP ----------------
-st.set_page_config(page_title="MKULUNGWA GLOBAL V46", layout="wide")
+st.set_page_config(page_title="MKULUNGWA GLOBAL V46.1", layout="wide")
 
 st.markdown("""
     <style>
@@ -17,15 +17,36 @@ st.markdown("""
     .elite-card { 
         background: #0A0F14; padding: 25px; border-radius: 15px; 
         border: 1px solid #00FF00; margin-bottom: 20px;
-        box-shadow: 0px 4px 20px rgba(0, 255, 0, 0.2);
     }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #00FF00; color: black; font-weight: bold; }
     h1, h2, h3 { color: #00FF00; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1>🌍 GLOBAL TRADING DESK V46</h1>", unsafe_allow_html=True)
+st.markdown("<h1>🌍 GLOBAL TRADING DESK V46.1</h1>", unsafe_allow_html=True)
 
-# ---------------- 2. COUNTRY & LEAGUE MAPPING ----------------
+# ---------------- 2. ADMIN TOOLS (Vitufe vya Juu) ----------------
+st.subheader("🛠️ SYSTEM CONTROL CENTER")
+col_tool1, col_tool2 = st.columns(2)
+
+model_path = "v46_ultimate_global.pkl"
+
+with col_tool1:
+    if st.button("🔄 REFRESH DATA & RETRAIN AI"):
+        if os.path.exists(model_path):
+            os.remove(model_path)
+        st.cache_data.clear()
+        st.success("Mfumo umesafishwa! AI inaanza kujifunza upya sasa hivi...")
+        st.rerun()
+
+with col_tool2:
+    if st.button("🧹 CLEAR ALL SELECTIONS"):
+        st.cache_data.clear()
+        st.rerun()
+
+st.markdown("---")
+
+# ---------------- 3. COUNTRY & LEAGUE MAPPING ----------------
 COUNTRY_MAP = {
     "ENGLAND": {"Premier": "E0", "Championship": "E1", "League 1": "E2"},
     "SPAIN": {"La Liga": "SP1", "Segunda": "SP2"},
@@ -40,12 +61,11 @@ COUNTRY_MAP = {
     "SCOTLAND": {"Premiership": "SC0", "Championship": "SC1"}
 }
 
-# ---------------- 3. DATA ENGINE (Auto-Update) ----------------
+# ---------------- 4. DATA ENGINE ----------------
 @st.cache_data(ttl=3600)
 def load_all_data():
     seasons = ["2526", "2425", "2324"]
     dfs = []
-    
     for s in seasons:
         for country, leagues in COUNTRY_MAP.items():
             for league_name, code in leagues.items():
@@ -59,9 +79,7 @@ def load_all_data():
                         cols = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'CountryName', 'LeagueName']
                         available_cols = [c for c in cols if c in temp_df.columns]
                         dfs.append(temp_df[available_cols].dropna())
-                except:
-                    continue
-            
+                except: continue
     full_df = pd.concat(dfs, ignore_index=True)
     full_df['total'] = full_df['FTHG'] + full_df['FTAG']
     full_df['over25'] = (full_df['total'] >= 3).astype(int)
@@ -69,7 +87,7 @@ def load_all_data():
 
 df_raw = load_all_data()
 
-# ---------------- 4. FEATURE ENGINEERING ----------------
+# ---------------- 5. FEATURE ENGINEERING ----------------
 def process_features(df):
     df = df.copy()
     df['hg'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.rolling(10, min_periods=1).mean())
@@ -78,13 +96,10 @@ def process_features(df):
 
 df_processed = process_features(df_raw)
 
-# ---------------- 5. AI MODEL (With Error Protection) ----------------
+# ---------------- 6. AI MODEL ENGINE ----------------
 FEATS = ['hg', 'ag']
 X = df_processed[FEATS]
 y = df_processed['over25']
-
-# Tumeulipa jina jipya kabisa ili tuepuke mgongano
-model_path = "v46_ultimate_global.pkl"
 
 def train_new_model():
     rf = RandomForestClassifier(n_estimators=300).fit(X, y)
@@ -97,25 +112,21 @@ if os.path.exists(model_path):
     try:
         model = joblib.load(model_path)
     except:
-        # Hapa ndipo ulinzi ulipo: Kama ikigoma, inafuta na kufundisha upya
         os.remove(model_path)
         model = train_new_model()
 else:
     model = train_new_model()
 
-# ---------------- 6. MAIN INTERFACE ----------------
-st.subheader("🎯 Global Sniper Analyzer")
+# ---------------- 7. MAIN INTERFACE ----------------
+st.subheader("🎯 Sniper Match Analyzer")
 
 c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 2, 2, 1])
 
-with c1:
-    country_choice = st.selectbox("MATAFA", sorted(list(COUNTRY_MAP.keys())))
-
+with c1: country_choice = st.selectbox("MATAFA", sorted(list(COUNTRY_MAP.keys())))
 with c2:
     available_leagues = list(COUNTRY_MAP[country_choice].keys())
     league_choice = st.selectbox("LIGI", available_leagues)
 
-# Filter timu
 mask = (df_raw['CountryName'] == country_choice) & (df_raw['LeagueName'] == league_choice)
 teams_list = sorted(df_raw[mask]['HomeTeam'].unique())
 
@@ -129,15 +140,12 @@ a_stats = df_processed[df_processed['AwayTeam'] == away].tail(1)
 
 if not h_stats.empty and not a_stats.empty:
     hg, ag = h_stats['hg'].values[0], a_stats['ag'].values[0]
-    
-    # Probability calculations
     p_rf = model["rf"].predict_proba([[hg, ag]])[0][1]
     p_lr = model["lr"].predict_proba([[hg, ag]])[0][1]
     prob = (p_rf + p_lr) / 2
     value = (prob * odds) - 1
 
     st.markdown("<div class='elite-card'>", unsafe_allow_html=True)
-    
     m1, m2, m3 = st.columns(3)
     m1.metric("AI PROBABILITY", f"{prob*100:.1f}%")
     m2.metric("EXPECTED VALUE", f"{value:.2f}", delta=f"{value*100:.1f}%")
@@ -148,18 +156,7 @@ if not h_stats.empty and not a_stats.empty:
         signal, color = "⚡ HIGH TRADE", "#CCFF00"
     else:
         signal, color = "❌ NO TRADE", "#FF4B4B"
-        
     st.markdown(f"<h2 style='color:{color};'>SIGNAL: {signal}</h2>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Portfolio Tracking
-    if st.button("➕ Add to Train"):
-        if "picks" not in st.session_state: st.session_state.picks = []
-        st.session_state.picks.append({"Match": f"{home} vs {away}", "Prob": f"{prob*100:.1f}%", "Odds": odds})
-        st.success("Imewekwa kwenye mkeka!")
-
-    if "picks" in st.session_state and st.session_state.picks:
-        st.table(st.session_state.picks)
-
 else:
     st.info("Chagua timu kuanza uchambuzi.")
