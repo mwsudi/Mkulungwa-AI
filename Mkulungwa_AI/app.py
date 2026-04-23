@@ -7,10 +7,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
 # ---------------- CONFIG ----------------
-st.set_page_config(page_title="MKULUNGWA GOD MODE v2", layout="wide")
-st.title("🧠⚡ MKULUNGWA AI – SAFE MODE (OVER 1.5)")
+st.set_page_config(page_title="MKULUNGWA GOD MODE 2026", layout="wide")
+st.title("🧠⚡ MKULUNGWA AI – VERSION 2026 (OVER 1.5)")
 
-MODEL_PATH = "mkulungwa_safe_model.pkl"
+MODEL_PATH = "mkulungwa_2026_model.pkl"
 
 # ---------------- LEAGUES ----------------
 COUNTRY_MAP = {
@@ -23,42 +23,50 @@ COUNTRY_MAP = {
     "BELGIUM": {"Jupiler": "B1"}
 }
 
-# ---------------- LOAD DATA (3 SEASONS) ----------------
-@st.cache_data(ttl=86400) # Inakaa saa 24 kwa uhakika
+# ---------------- LOAD DATA (4 SEASONS: 22/23 - 25/26) ----------------
+@st.cache_data(ttl=3600)
 def load_data():
-    seasons = ["2223", "2324", "2425"] # Miaka 3 ya data
+    # Tumeshajumuisha msimu wa sasa 25/26
+    seasons = ["2223", "2324", "2425", "2526"] 
     dfs = []
+    
+    status_text = st.empty()
     progress_bar = st.progress(0)
-    total_steps = len(seasons) * len(COUNTRY_MAP)
-    step = 0
+    
+    total_leagues = sum(len(v) for v in COUNTRY_MAP.values())
+    total_steps = len(seasons) * total_leagues
+    current_step = 0
 
     for s in seasons:
         for c in COUNTRY_MAP:
             for lg, code in COUNTRY_MAP[c].items():
                 try:
                     url = f"https://www.football-data.co.uk/mmz4281/{s}/{code}.csv"
-                    r = requests.get(url, timeout=15)
+                    r = requests.get(url, timeout=10)
                     if r.status_code == 200:
                         df_tmp = pd.read_csv(StringIO(r.text))
                         df_tmp["Country"], df_tmp["League"] = c, lg
+                        # Tunachukua column muhimu tu kupunguza mzigo wa RAM
                         dfs.append(df_tmp[['HomeTeam','AwayTeam','FTHG','FTAG','Country','League']])
                 except:
                     continue
-            step += 1
-            progress_bar.progress(step / total_steps)
+                current_step += 1
+                progress_bar.progress(min(current_step / total_steps, 1.0))
+                status_text.text(f"Inapakia Data: Msimu {s} - {lg}...")
     
+    status_text.empty()
     df = pd.concat(dfs).dropna()
     df['total'] = df['FTHG'] + df['FTAG']
-    # TUNACHUJA OVER 1.5 (Magoli kuanzia mawili kwenda juu)
+    # LENGO: OVER 1.5 (Goli 2 au zaidi)
     df['over15'] = (df['total'] >= 2).astype(int)
     return df
 
 df = load_data()
 
-# ---------------- FEATURE ENGINEERING ----------------
+# ---------------- FEATURE ENGINEERING (LAST 8 MATCHES) ----------------
 def get_features(df):
     df = df.copy()
-    # Mahesabu ya fomu ya hivi karibuni
+    # Mahesabu ya fomu kwa kutumia mechi 8 za mwisho (kwa uhakika zaidi)
     df['hg'] = df.groupby('HomeTeam')['FTHG'].transform(lambda x: x.rolling(8).mean())
     df['ag'] = df.groupby('AwayTeam')['FTAG'].transform(lambda x: x.rolling(8).mean())
     df['hc'] = df.groupby('HomeTeam')['FTAG'].transform(lambda x: x.rolling(8).mean())
@@ -72,24 +80,24 @@ FEATS = ['hg','ag','hc','ac','hs','as_']
 X = df_feats[FEATS]
 y = df_feats['over15']
 
-# ---------------- AI MODEL TRAINING ----------------
+# ---------------- AI MODEL ----------------
 @st.cache_resource
 def train_model():
+    # RF 500 kwa ajili ya accuracy ya juu zaidi
     rf = RandomForestClassifier(n_estimators=500, random_state=42).fit(X, y)
     lr = LogisticRegression(max_iter=1000).fit(X, y)
     return {"rf": rf, "lr": lr}
 
 model = train_model()
 
-# ---------------- POISSON CALCULATOR ----------------
+# ---------------- POISSON LOGIC ----------------
 def poisson_prob(h, a):
-    # Probability ya kufungana magoli kuanzia 2 kwenda juu
     lamb = h + a
     prob_0 = np.exp(-lamb)
     prob_1 = lamb * np.exp(-lamb)
     return 1 - (prob_0 + prob_1)
 
-# ---------------- PREDICTION LOGIC ----------------
+# ---------------- PREDICT ----------------
 def predict_over15(h, a):
     h_data = df_feats[df_feats['HomeTeam'] == h].tail(1)
     a_data = df_feats[df_feats['AwayTeam'] == a].tail(1)
@@ -105,25 +113,29 @@ def predict_over15(h, a):
     p2 = model["lr"].predict_proba(vals)[0][1]
     p3 = poisson_prob(h_data['hg'].values[0], a_data['ag'].values[0])
 
-    # Weighting: RF inapewa uzito zaidi kwa accuracy
     return (0.4 * p1 + 0.3 * p2 + 0.3 * p3)
 
-# ---------------- UI DASHBOARD ----------------
-st.header("🎯 SNIPER MANUAL: OVER 1.5 SAFE MODE")
+# ---------------- UI ----------------
+st.sidebar.title("SETTINGS")
+st.sidebar.success("DATA: 2022 - 2026")
+st.sidebar.info("MODE: OVER 1.5 SAFE")
+
+st.subheader("🎯 MANUAL SNIPER (OVER 1.5)")
 
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    lg = st.selectbox("LIGI", sorted(df['League'].unique()))
+    lg_list = sorted(df['League'].unique())
+    lg = st.selectbox("CHAGUA LIGI", lg_list)
     teams = sorted(df[df['League'] == lg]['HomeTeam'].unique())
 with c2:
     home = st.selectbox("HOME TEAM", teams)
 with c3:
     away = st.selectbox("AWAY TEAM", [t for t in teams if t != home])
 
-odds = st.number_input("ODDS ZA MUHINDI (Over 1.5)", value=1.30, step=0.01)
+odds = st.number_input("ODDS ZA MUHINDI", value=1.25, step=0.01)
 
-if st.button("CHAMBUA KITALAMU"):
+if st.button("PIGA ANALYSES"):
     p = predict_over15(home, away)
     if p:
         mp = 1 / odds
@@ -132,25 +144,21 @@ if st.button("CHAMBUA KITALAMU"):
         
         st.divider()
         
-        # Hukumu ya AI
-        if p > 0.85 and val > 0.05:
+        # Hukumu ya mwisho
+        if p >= 0.85:
             st.success(f"🔥 UHAKIKA WA NAULI! (AI: {p*100:.1f}%)")
             st.balloons()
-        elif p > 0.75:
-            st.warning(f"⚖️ INAFAA KWA MKΕΚΑ (AI: {p*100:.1f}%)")
+        elif p >= 0.70:
+            st.warning(f"⚖️ INAFAA KWA MKEKA (AI: {p*100:.1f}%)")
         else:
-            st.error(f"❌ RISK KUBWA (AI: {p*100:.1f}%)")
+            st.error(f"❌ RISK - ACHANA NAYO (AI: {p*100:.1f}%)")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("AI PROBABILITY", f"{p*100:.1f}%")
-        col2.metric("EDGE", f"{edge*100:.1f}%")
-        col3.metric("VALUE SCORE", f"{val:.2f}")
+        res1, res2, res3 = st.columns(3)
+        res1.metric("AI%", f"{p*100:.1f}%")
+        res2.metric("EDGE%", f"{edge*100:.1f}%")
+        res3.metric("VALUE", f"{val:.2f}")
     else:
-        st.error("Data hazitoshi kwa timu hizi!")
+        st.warning("Data hazitoshi kwa mechi hii (Huenda timu imepanda daraja hivi karibuni).")
 
-st.sidebar.markdown("### 📋 MIKAKATI YA MASTER")
-st.sidebar.info("""
-1. **Single Bet:** Over 1.5 kwenye mechi yenye AI > 85%.
-2. **Treni la Nauli:** Unganisha timu 3-4 zenye AI > 80%.
-3. **Bagamoyo Prep:** Usibet hela yote ya nauli!
-""")
+st.markdown("---")
+st.caption("Mkulungwa AI v2026 | Bagamoyo Edition 🚢")
