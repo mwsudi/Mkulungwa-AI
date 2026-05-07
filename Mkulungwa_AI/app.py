@@ -3,73 +3,44 @@ import pandas as pd
 import numpy as np
 import requests
 import os
+import sqlite3
 from io import StringIO
 from math import exp, factorial
+from sklearn.ensemble import RandomForestClassifier
 
-# =====================================
+# ==============================
 # PAGE CONFIG
-# =====================================
+# ==============================
 
-st.set_page_config(
-    page_title="MKULUNGWA AI MASTER",
-    layout="wide"
+st.set_page_config(page_title="MKULUNGWA AI MASTER", layout="wide")
+
+# ==============================
+# DATABASE (MEMORY)
+# ==============================
+
+conn = sqlite3.connect("mkulungwa_ai.db", check_same_thread=False)
+c = conn.cursor()
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    home TEXT,
+    away TEXT,
+    league TEXT,
+    h_scored REAL,
+    a_scored REAL,
+    h_conceded REAL,
+    a_conceded REAL,
+    home_goals INTEGER,
+    away_goals INTEGER
 )
+""")
 
-# =====================================
-# STYLE
-# =====================================
+conn.commit()
 
-st.markdown("""
-<style>
-
-.main{
-    background:#0E1117;
-    color:white;
-}
-
-.stButton>button{
-    background:linear-gradient(135deg,#00ff66,#004d1a);
-    color:white;
-    border:none;
-    border-radius:12px;
-    height:3.2em;
-    width:100%;
-    font-weight:bold;
-}
-
-.card{
-    background:#161B22;
-    padding:20px;
-    border-radius:15px;
-    border-top:4px solid #00ff66;
-    text-align:center;
-    margin-bottom:15px;
-}
-
-.big{
-    font-size:30px;
-    font-weight:900;
-    color:#00ff66;
-}
-
-.small{
-    color:#cccccc;
-}
-
-.advice{
-    background:#101820;
-    border-left:5px solid #00ff66;
-    padding:15px;
-    margin-top:10px;
-    border-radius:10px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================
+# ==============================
 # LEAGUES
-# =====================================
+# ==============================
 
 LEAGUE_MAP = {
     "ENGLAND": "E0",
@@ -84,426 +55,170 @@ LEAGUE_MAP = {
     "TURKEY": "T1"
 }
 
-# =====================================
-# SIDEBAR
-# =====================================
-
-with st.sidebar:
-
-    st.title("🌍 GLOBAL DATABASE")
-
-    if st.button("🔄 REFRESH DATABASE"):
-
-        with st.spinner("Loading leagues..."):
-
-            for name, code in LEAGUE_MAP.items():
-
-                try:
-
-                    url = f"https://www.football-data.co.uk/mmz4281/2526/{code}.csv"
-
-                    r = requests.get(url, timeout=15)
-
-                    if r.status_code == 200:
-
-                        with open(f"{code}.csv", "wb") as f:
-                            f.write(r.content)
-
-                except:
-                    pass
-
-        st.success("ALL LEAGUES UPDATED!")
-
-# =====================================
-# TITLE
-# =====================================
+# ==============================
+# STYLE
+# ==============================
 
 st.markdown("""
-<h1 style='text-align:center;color:#00ff66;'>
-MKULUNGWA AI MASTER V30
-</h1>
+<style>
+.main{background:#0E1117;color:white;}
+.card{background:#161B22;padding:20px;border-radius:12px;border-top:4px solid #00ff66;text-align:center;}
+.big{font-size:28px;color:#00ff66;font-weight:bold;}
+.small{color:#ccc;}
+.advice{background:#101820;padding:15px;border-left:4px solid #00ff66;margin-top:10px;border-radius:10px;}
+</style>
 """, unsafe_allow_html=True)
 
-# =====================================
-# LEAGUE SELECT
-# =====================================
+# ==============================
+# LOAD DATA
+# ==============================
 
-league = st.selectbox(
-    "🌍 SELECT LEAGUE",
-    list(LEAGUE_MAP.keys())
-)
+def load_data(code):
+    path = f"{code}.csv"
+    if os.path.exists(path):
+        return pd.read_csv(path)
+    return None
 
+# ==============================
+# MODEL TRAINING
+# ==============================
+
+def train_model():
+    df = pd.read_sql("SELECT * FROM matches", conn)
+
+    if len(df) < 20:
+        return None
+
+    df["label"] = (df["home_goals"] > df["away_goals"]).astype(int)
+
+    X = df[["h_scored","a_scored","h_conceded","a_conceded"]]
+    y = df["label"]
+
+    model = RandomForestClassifier(n_estimators=200, random_state=42)
+    model.fit(X, y)
+
+    return model
+
+# ==============================
+# POISSON
+# ==============================
+
+def poisson(lam, k):
+    return (lam**k * exp(-lam)) / factorial(k)
+
+# ==============================
+# UI
+# ==============================
+
+st.title("🧠 MKULUNGWA AI MASTER v50")
+
+league = st.selectbox("Select League", list(LEAGUE_MAP.keys()))
 code = LEAGUE_MAP[league]
 
-# =====================================
-# LOAD DATA
-# =====================================
+df = load_data(code)
 
-if os.path.exists(f"{code}.csv"):
-
-    df = pd.read_csv(f"{code}.csv")
+if df is not None:
 
     teams = sorted(df["HomeTeam"].dropna().unique())
 
-    home_team = st.selectbox(
-        "🏠 HOME TEAM",
-        teams
-    )
+    home = st.selectbox("Home Team", teams)
+    away = st.selectbox("Away Team", [t for t in teams if t != home])
 
-    away_team = st.selectbox(
-        "🚀 AWAY TEAM",
-        [x for x in teams if x != home_team]
-    )
+    if st.button("RUN AI PREDICTION"):
 
-    # =====================================
-    # RUN AI
-    # =====================================
+        h_form = df[df["HomeTeam"] == home].tail(8)
+        a_form = df[df["AwayTeam"] == away].tail(8)
 
-    if st.button("🎯 RUN MASTER AI"):
+        h_scored = h_form["FTHG"].mean()
+        h_conceded = h_form["FTAG"].mean()
+        a_scored = a_form["FTAG"].mean()
+        a_conceded = a_form["FTHG"].mean()
 
-        # LAST MATCHES
+        home_xg = (h_scored + a_conceded)/2
+        away_xg = (a_scored + h_conceded)/2
 
-        h_home = df[df["HomeTeam"] == home_team].tail(8)
-        a_away = df[df["AwayTeam"] == away_team].tail(8)
+        # =====================
+        # GOALS PROB
+        # =====================
 
-        # H2H
-
-        h2h = df[
-            (
-                (df["HomeTeam"] == home_team)
-                &
-                (df["AwayTeam"] == away_team)
-            )
-            |
-            (
-                (df["HomeTeam"] == away_team)
-                &
-                (df["AwayTeam"] == home_team)
-            )
-        ].tail(5)
-
-        # WEIGHTS
-
-        weights = np.array([1,2,3,4,5,6,7,8])
-
-        # HOME FORM
-
-        h_scored = np.average(
-            h_home["FTHG"],
-            weights=weights[-len(h_home):]
-        )
-
-        h_conceded = np.average(
-            h_home["FTAG"],
-            weights=weights[-len(h_home):]
-        )
-
-        # AWAY FORM
-
-        a_scored = np.average(
-            a_away["FTAG"],
-            weights=weights[-len(a_away):]
-        )
-
-        a_conceded = np.average(
-            a_away["FTHG"],
-            weights=weights[-len(a_away):]
-        )
-
-        # EXPECTED GOALS
-
-        home_xg = (h_scored + a_conceded) / 2
-        away_xg = (a_scored + h_conceded) / 2
-
-        total_xg = home_xg + away_xg
-
-        # =====================================
-        # POISSON
-        # =====================================
-
-        def poisson(lam, k):
-            return (lam**k * exp(-lam)) / factorial(k)
-
-        # OVER 2.5
-
-        prob_under25 = 0
+        prob_under = 0
 
         for i in range(3):
             for j in range(3):
+                if i+j < 3:
+                    prob_under += poisson(home_xg,i)*poisson(away_xg,j)
 
-                if i + j < 3:
+        prob_over = 1 - prob_under
 
-                    prob_under25 += (
-                        poisson(home_xg, i)
-                        *
-                        poisson(away_xg, j)
-                    )
-
-        prob_over25 = 1 - prob_under25
-
+        # =====================
         # BTTS
+        # =====================
 
-        prob_btts = (
-            (1 - poisson(home_xg,0))
-            *
-            (1 - poisson(away_xg,0))
-        )
+        prob_btts = (1 - poisson(home_xg,0)) * (1 - poisson(away_xg,0))
 
-        # =====================================
+        # =====================
         # CORNERS
-        # =====================================
+        # =====================
 
-        avg_hc = (
-            h_home["HC"].mean()
-            if "HC" in h_home.columns
-            else 5
-        )
+        hc = h_form["HC"].mean() if "HC" in h_form.columns else 5
+        ac = a_form["AC"].mean() if "AC" in a_form.columns else 4
 
-        avg_ac = (
-            a_away["AC"].mean()
-            if "AC" in a_away.columns
-            else 4
-        )
+        corners = hc + ac
 
-        total_corners = avg_hc + avg_ac
+        # =====================
+        # PICKS
+        # =====================
 
-        # =====================================
-        # GOAL PICK
-        # =====================================
+        goal_pick = "OVER 2.5" if prob_over > 0.6 else "OVER 1.5"
+        btts_pick = "YES" if prob_btts > 0.6 else "NO"
+        corner_pick = "OVER 8.5" if corners > 8 else "OVER 7.5"
+        dc_pick = "1X" if home_xg > away_xg else "X2"
 
-        if prob_over25 > 0.70:
-            goal_pick = "OVER 2.5"
+        correct_score = f"{round(home_xg)}-{round(away_xg)}"
 
-        elif prob_over25 > 0.50:
-            goal_pick = "OVER 1.5"
+        first_half = "OVER 0.5 HT" if (home_xg+away_xg)*0.45 > 0.8 else "UNDER 1.5 HT"
 
-        else:
-            goal_pick = "UNDER 3.5"
+        confidence = round(((prob_over*100)+(prob_btts*100))/2)
 
-        # =====================================
-        # CORNER PICK
-        # =====================================
+        risk = "🟢 LOW" if confidence>80 else "🟡 MID" if confidence>60 else "🔴 HIGH"
 
-        if total_corners > 10:
-            corner_pick = "OVER 9.5"
+        # =====================
+        # SAVE MEMORY
+        # =====================
 
-        elif total_corners > 8:
-            corner_pick = "OVER 8.5"
+        c.execute("""
+        INSERT INTO matches (home,away,league,h_scored,a_scored,h_conceded,a_conceded)
+        VALUES (?,?,?,?,?,?,?,?)
+        """,(home,away,league,h_scored,a_scored,h_conceded,a_conceded))
 
-        else:
-            corner_pick = "OVER 7.5"
+        conn.commit()
 
-        # =====================================
-        # DOUBLE CHANCE
-        # =====================================
-
-        if home_xg > away_xg + 0.5:
-            dc_pick = "1X"
-
-        elif away_xg > home_xg + 0.5:
-            dc_pick = "X2"
-
-        else:
-            dc_pick = "12"
-
-        # =====================================
-        # BTTS PICK
-        # =====================================
-
-        if prob_btts > 0.60:
-            btts_pick = "BTTS YES"
-
-        elif prob_btts > 0.45:
-            btts_pick = "BTTS RISKY"
-
-        else:
-            btts_pick = "BTTS NO"
-
-        # =====================================
-        # FIRST HALF
-        # =====================================
-
-        first_half_xg = total_xg * 0.45
-
-        if first_half_xg > 1.2:
-            fh_pick = "OVER 1.5 HT"
-
-        elif first_half_xg > 0.7:
-            fh_pick = "OVER 0.5 HT"
-
-        else:
-            fh_pick = "UNDER 1.5 HT"
-
-        # =====================================
-        # CORRECT SCORE
-        # =====================================
-
-        home_goals = round(home_xg)
-        away_goals = round(away_xg)
-
-        correct_score = f"{home_goals}-{away_goals}"
-
-        # =====================================
-        # CONFIDENCE
-        # =====================================
-
-        confidence = round(
-            (
-                (prob_over25 * 100)
-                +
-                (prob_btts * 100)
-            ) / 2
-        )
-
-        # =====================================
-        # RISK LEVEL
-        # =====================================
-
-        if confidence >= 80:
-            risk_level = "🟢 LOW RISK"
-
-        elif confidence >= 65:
-            risk_level = "🟡 MEDIUM RISK"
-
-        else:
-            risk_level = "🔴 HIGH RISK"
-
-        # =====================================
-        # SAFE COMBO
-        # =====================================
-
-        safe_combo = f"""
-        ✅ {goal_pick}
-        ✅ {dc_pick}
-        ✅ {corner_pick}
-        """
-
-        # =====================================
+        # =====================
         # DISPLAY
-        # =====================================
+        # =====================
 
         st.markdown("---")
 
-        c1, c2, c3 = st.columns(3)
+        c1,c2,c3 = st.columns(3)
 
         with c1:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>⚽ GOALS</h3>
-            <div class='big'>{goal_pick}</div>
-            <div class='small'>
-            Probability: {prob_over25*100:.1f}%
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div class='card'><h3>GOALS</h3><div class='big'>{goal_pick}</div></div>",unsafe_allow_html=True)
 
         with c2:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>🚩 CORNERS</h3>
-            <div class='big'>{corner_pick}</div>
-            <div class='small'>
-            Expected: {total_corners:.1f}
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div class='card'><h3>BTTS</h3><div class='big'>{btts_pick}</div></div>",unsafe_allow_html=True)
 
         with c3:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>🏆 DOUBLE CHANCE</h3>
-            <div class='big'>{dc_pick}</div>
-            <div class='small'>
-            Confidence: {confidence}%
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # =====================================
-        # EXTRA MARKETS
-        # =====================================
-
-        x1, x2, x3 = st.columns(3)
-
-        with x1:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>🔥 BTTS</h3>
-            <div class='big'>{btts_pick}</div>
-            <div class='small'>
-            Probability: {prob_btts*100:.1f}%
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with x2:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>⏱ FIRST HALF</h3>
-            <div class='big'>{fh_pick}</div>
-            <div class='small'>
-            HT xG: {first_half_xg:.2f}
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with x3:
-
-            st.markdown(f"""
-            <div class='card'>
-            <h3>🎯 CORRECT SCORE</h3>
-            <div class='big'>{correct_score}</div>
-            <div class='small'>
-            AI Prediction
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # =====================================
-        # ADVICE
-        # =====================================
+            st.markdown(f"<div class='card'><h3>CORNERS</h3><div class='big'>{corner_pick}</div></div>",unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class='advice'>
-        ✅ SAFE PICK:
-        <b>{goal_pick}</b>
-        linaonekana salama zaidi.
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class='advice'>
-        🤖 AI ANALYSIS:
-        Mfumo umechambua:
-        form,
-        attack,
-        defense,
-        H2H,
-        corners,
-        na home advantage.
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class='advice'>
-        💎 SAFE COMBO:
-        <br><br>
-        {safe_combo}
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class='advice'>
-        ⚠️ RISK LEVEL:
-        <b>{risk_level}</b>
+        🏆 DOUBLE CHANCE: <b>{dc_pick}</b><br>
+        🎯 CORRECT SCORE: <b>{correct_score}</b><br>
+        ⏱ FIRST HALF: <b>{first_half}</b><br>
+        📊 CONFIDENCE: <b>{confidence}%</b><br>
+        ⚠️ RISK: <b>{risk}</b>
         </div>
         """, unsafe_allow_html=True)
 
 else:
-
-    st.warning("⚠️ Refresh database kwanza.")
+    st.warning("Database not found. Refresh first.")
