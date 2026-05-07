@@ -3,43 +3,31 @@ import pandas as pd
 import numpy as np
 import requests
 import os
-import sqlite3
 from math import exp, factorial
-from sklearn.ensemble import RandomForestClassifier
 
-# ==============================
+# ==========================
 # PAGE CONFIG
-# ==============================
+# ==========================
 
-st.set_page_config(page_title="MKULUNGWA AI MASTER", layout="wide")
+st.set_page_config(page_title="MKULUNGWA AI STABLE", layout="wide")
 
-# ==============================
-# DATABASE SAFE SETUP
-# ==============================
+# ==========================
+# STYLE
+# ==========================
 
-conn = sqlite3.connect("mkulungwa_ai.db", check_same_thread=False)
-c = conn.cursor()
+st.markdown("""
+<style>
+.main{background:#0E1117;color:white;}
+.card{background:#161B22;padding:20px;border-radius:12px;border-top:4px solid #00ff66;text-align:center;}
+.big{font-size:28px;color:#00ff66;font-weight:bold;}
+.small{color:#ccc;}
+.advice{background:#101820;padding:15px;border-left:4px solid #00ff66;margin-top:10px;border-radius:10px;}
+</style>
+""", unsafe_allow_html=True)
 
-c.execute("""
-CREATE TABLE IF NOT EXISTS matches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    home TEXT,
-    away TEXT,
-    league TEXT,
-    h_scored REAL,
-    a_scored REAL,
-    h_conceded REAL,
-    a_conceded REAL,
-    home_goals INTEGER,
-    away_goals INTEGER
-)
-""")
-
-conn.commit()
-
-# ==============================
+# ==========================
 # LEAGUES
-# ==============================
+# ==========================
 
 LEAGUE_MAP = {
     "ENGLAND": "E0",
@@ -54,9 +42,9 @@ LEAGUE_MAP = {
     "TURKEY": "T1"
 }
 
-# ==============================
+# ==========================
 # LOAD DATA SAFE
-# ==============================
+# ==========================
 
 def load_data(code):
     path = f"{code}.csv"
@@ -64,48 +52,27 @@ def load_data(code):
         return pd.read_csv(path)
     return None
 
-# ==============================
-# POISSON
-# ==============================
+# ==========================
+# POISSON FUNCTION
+# ==========================
 
 def poisson(lam, k):
     return (lam**k * exp(-lam)) / factorial(k)
 
-# ==============================
-# ML MODEL
-# ==============================
-
-def train_model():
-
-    df = pd.read_sql("SELECT * FROM matches", conn)
-
-    if len(df) < 20:
-        return None
-
-    df["label"] = (df["home_goals"] > df["away_goals"]).astype(int)
-
-    X = df[["h_scored","a_scored","h_conceded","a_conceded"]]
-    y = df["label"]
-
-    model = RandomForestClassifier(n_estimators=150, random_state=42)
-    model.fit(X, y)
-
-    return model
-
-# ==============================
+# ==========================
 # UI
-# ==============================
+# ==========================
 
-st.title("🧠 MKULUNGWA AI MASTER v50 FIXED")
+st.title("🧠 MKULUNGWA AI STABLE v60")
 
 league = st.selectbox("Select League", list(LEAGUE_MAP.keys()))
 code = LEAGUE_MAP[league]
 
 df = load_data(code)
 
-# ==============================
-# SAFETY CHECK
-# ==============================
+# ==========================
+# SAFE CHECK
+# ==========================
 
 if df is None or len(df) == 0:
     st.error("❌ No data found. Please refresh database.")
@@ -116,9 +83,9 @@ teams = sorted(df["HomeTeam"].dropna().unique())
 home = st.selectbox("Home Team", teams)
 away = st.selectbox("Away Team", [t for t in teams if t != home])
 
-# ==============================
+# ==========================
 # RUN AI
-# ==============================
+# ==========================
 
 if st.button("RUN AI PREDICTION"):
 
@@ -126,20 +93,26 @@ if st.button("RUN AI PREDICTION"):
     a_form = df[df["AwayTeam"] == away].tail(8)
 
     if len(h_form) == 0 or len(a_form) == 0:
-        st.error("Not enough team data")
+        st.error("Not enough match data")
         st.stop()
 
-    # SAFE FEATURES
+    # SAFE STATS
     h_scored = h_form["FTHG"].mean()
     h_conceded = h_form["FTAG"].mean()
     a_scored = a_form["FTAG"].mean()
     a_conceded = a_form["FTHG"].mean()
 
+    h_scored = 0 if np.isnan(h_scored) else h_scored
+    h_conceded = 0 if np.isnan(h_conceded) else h_conceded
+    a_scored = 0 if np.isnan(a_scored) else a_scored
+    a_conceded = 0 if np.isnan(a_conceded) else a_conceded
+
+    # EXPECTED GOALS
     home_xg = (h_scored + a_conceded) / 2
     away_xg = (a_scored + h_conceded) / 2
 
     # ==========================
-    # GOALS PROB
+    # GOALS PROBABILITY
     # ==========================
 
     prob_under = 0
@@ -177,32 +150,11 @@ if st.button("RUN AI PREDICTION"):
 
     correct_score = f"{round(home_xg)}-{round(away_xg)}"
 
-    first_half = "OVER 0.5 HT" if (home_xg+away_xg)*0.45 > 0.8 else "UNDER 1.5 HT"
+    first_half = "OVER 0.5 HT" if (home_xg + away_xg) * 0.45 > 0.8 else "UNDER 1.5 HT"
 
-    confidence = round(((prob_over*100)+(prob_btts*100))/2)
+    confidence = round(((prob_over * 100) + (prob_btts * 100)) / 2)
 
     risk = "🟢 LOW" if confidence > 80 else "🟡 MID" if confidence > 60 else "🔴 HIGH"
-
-    # ==========================
-    # SAFE DATABASE INSERT (FIXED)
-    # ==========================
-
-    c.execute("""
-    INSERT INTO matches (
-        home,away,league,
-        h_scored,a_scored,
-        h_conceded,a_conceded,
-        home_goals,away_goals
-    )
-    VALUES (?,?,?,?,?,?,?,?,?)
-    """, (
-        home, away, league,
-        h_scored, a_scored,
-        h_conceded, a_conceded,
-        0, 0
-    ))
-
-    conn.commit()
 
     # ==========================
     # DISPLAY
@@ -213,29 +165,38 @@ if st.button("RUN AI PREDICTION"):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        st.success(f"GOALS: {goal_pick}")
+        st.markdown(f"""
+        <div class='card'>
+        <h3>⚽ GOALS</h3>
+        <div class='big'>{goal_pick}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with c2:
-        st.success(f"BTTS: {btts_pick}")
+        st.markdown(f"""
+        <div class='card'>
+        <h3>🔥 BTTS</h3>
+        <div class='big'>{btts_pick}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with c3:
-        st.success(f"CORNERS: {corner_pick}")
+        st.markdown(f"""
+        <div class='card'>
+        <h3>🚩 CORNERS</h3>
+        <div class='big'>{corner_pick}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown(f"""
-    ### 🏆 DOUBLE CHANCE: {dc_pick}
-    ### 🎯 SCORE: {correct_score}
-    ### ⏱ FIRST HALF: {first_half}
-    ### 📊 CONFIDENCE: {confidence}%
-    ### ⚠️ RISK: {risk}
-    """)
+    <div class='advice'>
+    🏆 DOUBLE CHANCE: <b>{dc_pick}</b><br>
+    🎯 CORRECT SCORE: <b>{correct_score}</b><br>
+    ⏱ FIRST HALF: <b>{first_half}</b><br>
+    📊 CONFIDENCE: <b>{confidence}%</b><br>
+    ⚠️ RISK: <b>{risk}</b>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ==============================
-# ML STATUS
-# ==============================
-
-model = train_model()
-
-if model is None:
-    st.info("ML Model: Not enough data yet (need 20+ matches)")
 else:
-    st.success("ML Model: ACTIVE ✔️")
+    st.info("Select teams and run AI prediction")
