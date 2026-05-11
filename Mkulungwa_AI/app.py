@@ -4,9 +4,10 @@ import numpy as np
 import requests
 from io import StringIO
 from math import exp, factorial
+from datetime import datetime
 
 # =========================================
-# BIST WAPAMBANAJI AI - ELITE 2026 v6.5 PRO
+# BIST WAPAMBANAJI AI - ELITE 2026 v7.0 PRO
 # =========================================
 
 st.set_page_config(
@@ -21,124 +22,126 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .main {
-        background-color:#0d1117;
-        color:#e6edf3;
-    }
+.main {
+    background-color:#0d1117;
+    color:#e6edf3;
+}
 
-    [data-testid="stSidebar"]{
-        background:#0b0e14;
-        border-right:2px solid #ffd700;
-    }
+[data-testid="stSidebar"]{
+    background:#0b0e14;
+    border-right:2px solid #ffd700;
+}
 
-    .stButton>button {
-        background: linear-gradient(135deg,#ffd700 0%,#b8860b 100%);
-        color:black !important;
-        border:none;
-        border-radius:10px;
-        height:3.5em;
-        font-weight:900;
-        width:100%;
-        letter-spacing:1px;
-        transition:0.3s;
-    }
+.stButton>button {
+    background: linear-gradient(135deg,#ffd700 0%,#b8860b 100%);
+    color:black !important;
+    border:none;
+    border-radius:10px;
+    height:3.5em;
+    font-weight:900;
+    width:100%;
+    letter-spacing:1px;
+    transition:0.3s;
+}
 
-    .stButton>button:hover {
-        transform:scale(1.02);
-        box-shadow:0 0 20px rgba(255,215,0,0.4);
-    }
+.stButton>button:hover {
+    transform:scale(1.02);
+    box-shadow:0 0 20px rgba(255,215,0,0.4);
+}
 
-    .card {
-        background:#161b22;
-        padding:25px;
-        border-radius:15px;
-        border:1px solid #30363d;
-        border-left:5px solid #ffd700;
-        text-align:center;
-        margin-bottom:20px;
-    }
+.card {
+    background:#161b22;
+    padding:25px;
+    border-radius:15px;
+    border:1px solid #30363d;
+    border-left:5px solid #ffd700;
+    text-align:center;
+    margin-bottom:20px;
+}
 
-    .big-val {
-        font-size:30px;
-        font-weight:900;
-        color:#ffd700;
-    }
+.big-val {
+    font-size:30px;
+    font-weight:900;
+    color:#ffd700;
+}
 
-    .small {
-        color:#8b949e;
-        font-size:14px;
-    }
+.small {
+    color:#8b949e;
+    font-size:14px;
+}
 
-    .section-title {
-        color:#ffd700;
-        font-size:24px;
-        font-weight:bold;
-        margin-top:25px;
-        margin-bottom:15px;
-        border-bottom:2px solid #ffd700;
-        padding-bottom:10px;
-    }
+.section-title {
+    color:#ffd700;
+    font-size:24px;
+    font-weight:bold;
+    margin-top:25px;
+    margin-bottom:15px;
+    border-bottom:2px solid #ffd700;
+    padding-bottom:10px;
+}
 
-    .signal-box {
-        padding:30px;
-        border-radius:20px;
-        text-align:center;
-        font-size:30px;
-        font-weight:900;
-        margin:20px 0;
-        background:#0d1117;
-    }
+.signal-box {
+    padding:30px;
+    border-radius:20px;
+    text-align:center;
+    font-size:30px;
+    font-weight:900;
+    margin:20px 0;
+    background:#0d1117;
+}
 
-    .h2h-box {
-        background:#161b22;
-        padding:12px;
-        border-radius:10px;
-        border:1px solid #30363d;
-        margin-bottom:10px;
-        display:flex;
-        justify-content:space-between;
-    }
+.h2h-box {
+    background:#161b22;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #30363d;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+}
+
+.metric-box {
+    background:#161b22;
+    padding:15px;
+    border-radius:12px;
+    border:1px solid #30363d;
+    text-align:center;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================
-# LEAGUES ENGINE
+# LEAGUES
 # =========================================
 
 LEAGUE_MAP = {
-    "ENGLAND": {
-        "Premier League": "E0",
-        "Championship": "E1"
-    },
-    "SPAIN": {
-        "La Liga": "SP1",
-        "La Liga 2": "SP2"
-    },
-    "ITALY": {
-        "Serie A": "I1",
-        "Serie B": "I2"
-    },
-    "GERMANY": {
-        "Bundesliga": "D1",
-        "Bundesliga 2": "D2"
-    },
-    "FRANCE": {
-        "Ligue 1": "F1",
-        "Ligue 2": "F2"
-    },
-    "NETHERLANDS": {
-        "Eredivisie": "N1"
-    },
-    "PORTUGAL": {
-        "Liga Portugal": "P1"
-    },
-    "TURKEY": {
-        "Super Lig": "T1"
-    }
+    "ENGLAND": {"Premier League": "E0", "Championship": "E1"},
+    "SPAIN": {"La Liga": "SP1", "La Liga 2": "SP2"},
+    "ITALY": {"Serie A": "I1", "Serie B": "I2"},
+    "GERMANY": {"Bundesliga": "D1", "Bundesliga 2": "D2"},
+    "FRANCE": {"Ligue 1": "F1", "Ligue 2": "F2"},
+    "NETHERLANDS": {"Eredivisie": "N1"},
+    "PORTUGAL": {"Liga Portugal": "P1"},
+    "TURKEY": {"Super Lig": "T1"}
 }
 
 # =========================================
-# SMART CACHE SYSTEM
+# LEAGUE PROFILE ENGINE
+# =========================================
+
+LEAGUE_STRENGTH = {
+    "ENGLAND": 1.05,
+    "SPAIN": 1.00,
+    "ITALY": 0.96,
+    "GERMANY": 1.10,
+    "FRANCE": 0.94,
+    "NETHERLANDS": 1.15,
+    "PORTUGAL": 0.98,
+    "TURKEY": 1.03
+}
+
+# =========================================
+# CACHE SYSTEM
 # =========================================
 
 @st.cache_data(ttl=3600)
@@ -146,7 +149,8 @@ def load_league_data(code):
     for season in ["2526", "2425"]:
         try:
             url = f"https://www.football-data.co.uk/mmz4281/{season}/{code}.csv"
-            r = requests.get(url, timeout=7)
+
+            r = requests.get(url, timeout=8)
 
             if r.status_code == 200:
                 return pd.read_csv(StringIO(r.text))
@@ -156,8 +160,15 @@ def load_league_data(code):
 
     return None
 
+# =========================================
+# SESSION STATE
+# =========================================
+
 if "data_cache" not in st.session_state:
     st.session_state.data_cache = {}
+
+if "prediction_history" not in st.session_state:
+    st.session_state.prediction_history = []
 
 # =========================================
 # SIDEBAR
@@ -170,7 +181,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    st.info("Bofya kupata football data mpya.")
+    st.info("Refresh kupata football data mpya.")
 
     if st.button("🔄 REFRESH DATABASE"):
 
@@ -194,15 +205,17 @@ with st.sidebar:
 # HEADER
 # =========================================
 
-st.markdown(
-    "<h1 style='text-align:center;color:#ffd700;'>BIST WAPAMBANAJI AI</h1>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+<h1 style='text-align:center;color:#ffd700;'>
+BIST WAPAMBANAJI AI
+</h1>
+""", unsafe_allow_html=True)
 
-st.markdown(
-    "<p style='text-align:center;color:#8b949e;'>ELITE FOOTBALL AI ENGINE v6.5 PRO</p>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+<p style='text-align:center;color:#8b949e;'>
+ELITE FOOTBALL AI ENGINE v7.0 PRO
+</p>
+""", unsafe_allow_html=True)
 
 # =========================================
 # SELECTORS
@@ -245,7 +258,7 @@ if code in st.session_state.data_cache:
 
     teams = sorted(df["HomeTeam"].dropna().unique())
 
-    s1, s2, s3 = st.columns([2, 2, 1])
+    s1, s2, s3 = st.columns([2,2,1])
 
     with s1:
         home = st.selectbox("🏠 HOME TEAM", teams)
@@ -270,23 +283,58 @@ if code in st.session_state.data_cache:
         a_data = df[df["AwayTeam"] == away].tail(8)
 
         if len(h_data) < 5 or len(a_data) < 5:
-            st.error("⚠️ Data haitoshi kufanya uchambuzi.")
+            st.error("⚠️ Data haitoshi.")
             st.stop()
 
         # =========================================
-        # CORE ENGINE
+        # WEIGHTS
         # =========================================
 
-        w_h = np.arange(1, len(h_data) + 1)
-        w_a = np.arange(1, len(a_data) + 1)
+        w_h = np.arange(1, len(h_data)+1)
+        w_a = np.arange(1, len(a_data)+1)
+
+        # =========================================
+        # HOME ADVANTAGE
+        # =========================================
 
         h_adv = 1.10 if nation in ["ENGLAND", "GERMANY"] else 1.05
 
-        h_sc = np.average(h_data["FTHG"], weights=w_h) * h_adv
-        h_con = np.average(h_data["FTAG"], weights=w_h)
+        # =========================================
+        # ATTACK / DEFENCE
+        # =========================================
 
-        a_sc = np.average(a_data["FTAG"], weights=w_a)
-        a_con = np.average(a_data["FTHG"], weights=w_a)
+        h_sc = np.average(
+            h_data["FTHG"],
+            weights=w_h
+        ) * h_adv
+
+        h_con = np.average(
+            h_data["FTAG"],
+            weights=w_h
+        )
+
+        a_sc = np.average(
+            a_data["FTAG"],
+            weights=w_a
+        )
+
+        a_con = np.average(
+            a_data["FTHG"],
+            weights=w_a
+        )
+
+        # =========================================
+        # LEAGUE MODIFIER
+        # =========================================
+
+        league_mod = LEAGUE_STRENGTH[nation]
+
+        h_sc *= league_mod
+        a_sc *= league_mod
+
+        # =========================================
+        # EXPECTED GOALS
+        # =========================================
 
         home_xg = (h_sc + a_con) / 2
         away_xg = (a_sc + h_con) / 2
@@ -305,9 +353,12 @@ if code in st.session_state.data_cache:
             return ((lam ** k) * exp(-lam)) / factorial(k)
 
         prob_u25 = sum(
-            poisson(home_xg, i) * poisson(away_xg, j)
+            poisson(home_xg, i) *
+            poisson(away_xg, j)
+
             for i in range(3)
             for j in range(3)
+
             if i + j < 3
         )
 
@@ -319,24 +370,13 @@ if code in st.session_state.data_cache:
         )
 
         # =========================================
-        # CLEAN SHEET FILTER
+        # SHOT INTENSITY
         # =========================================
 
-        home_cs = (h_data["FTAG"] == 0).mean()
-        away_cs = (a_data["FTHG"] == 0).mean()
+        hs = h_data["HS"].mean() if "HS" in h_data.columns else 10
+        ass = a_data["AS"].mean() if "AS" in a_data.columns else 8
 
-        if home_cs > 0.45 or away_cs > 0.45:
-            prob_btts -= 0.08
-
-        # =========================================
-        # INTENSITY
-        # =========================================
-
-        intensity = (
-            (h_data["HS"].mean() if "HS" in h_data.columns else 10)
-            +
-            (a_data["AS"].mean() if "AS" in a_data.columns else 8)
-        )
+        intensity = hs + ass
 
         if intensity > 25:
             prob_o25 += 0.04
@@ -345,33 +385,81 @@ if code in st.session_state.data_cache:
             prob_o25 -= 0.04
 
         # =========================================
-        # SAFE LIMITS
+        # SHOTS ON TARGET FILTER
+        # =========================================
+
+        hst = h_data["HST"].mean() if "HST" in h_data.columns else 4
+        ast = a_data["AST"].mean() if "AST" in a_data.columns else 3
+
+        sot = hst + ast
+
+        if sot > 9:
+            prob_o25 += 0.05
+
+        elif sot < 6:
+            prob_o25 -= 0.05
+
+        # =========================================
+        # CLEAN SHEET FILTER
+        # =========================================
+
+        home_clean_sheet = (h_data["FTAG"] == 0).mean()
+        away_clean_sheet = (a_data["FTHG"] == 0).mean()
+
+        if home_clean_sheet > 0.45:
+            prob_btts -= 0.08
+
+        if away_clean_sheet > 0.45:
+            prob_btts -= 0.08
+
+        # =========================================
+        # CLAMP
         # =========================================
 
         prob_o25 = min(max(prob_o25, 0.05), 0.95)
         prob_btts = min(max(prob_btts, 0.05), 0.95)
 
         # =========================================
-        # FORM
+        # FORM ENGINE
         # =========================================
 
-        form_consistency = 0
-
-        if h_data["FTHG"].tail(5).mean() >= 1.5:
-            form_consistency += 1
-
-        if a_data["FTAG"].tail(5).mean() >= 1.2:
-            form_consistency += 1
-
-        # =========================================
-        # CORNERS
-        # =========================================
-
-        t_corners = (
-            (h_data["HC"].mean() if "HC" in h_data.columns else 5)
-            +
-            (a_data["AC"].mean() if "AC" in a_data.columns else 4)
+        home_form = (
+            1 if h_data["FTHG"].tail(5).mean() >= 1.5
+            else 0
         )
+
+        away_form = (
+            1 if a_data["FTAG"].tail(5).mean() >= 1.2
+            else 0
+        )
+
+        form = home_form + away_form
+
+        # =========================================
+        # H2H
+        # =========================================
+
+        h2h = df[
+            (
+                (df["HomeTeam"] == home) &
+                (df["AwayTeam"] == away)
+            )
+            |
+            (
+                (df["HomeTeam"] == away) &
+                (df["AwayTeam"] == home)
+            )
+        ].tail(5)
+
+        if not h2h.empty:
+
+            h2h_avg = (
+                h2h["FTHG"] +
+                h2h["FTAG"]
+            ).mean()
+
+            if h2h_avg < 2:
+                prob_o25 -= 0.05
 
         # =========================================
         # SCORE ENGINE
@@ -392,32 +480,31 @@ if code in st.session_state.data_cache:
             score += 2
 
         if (
-            h_data["FTHG"].iloc[-1]
-            +
+            h_data["FTHG"].iloc[-1] +
             h_data["FTAG"].iloc[-1]
         ) > 2:
             score += 1
 
-        score += form_consistency
-
-        score = min(score, 9)
+        score += form
 
         # =========================================
-        # RED FLAG FILTER
+        # QUALITY ENGINE
         # =========================================
 
-        quality = round(
-            (
-                prob_o25 * 45
-                +
-                prob_btts * 25
-                +
-                min(total_xg / 4, 1) * 20
-                +
-                min(intensity / 30, 1) * 10
-            ),
-            1
+        quality = max(
+            0,
+            round(
+                (prob_o25 * 45) +
+                (prob_btts * 25) +
+                (min(total_xg/4,1) * 20) +
+                (min(intensity/30,1) * 10),
+                1
+            )
         )
+
+        # =========================================
+        # RED FLAGS
+        # =========================================
 
         if (
             (prob_o25 > 0.78 and intensity < 18)
@@ -431,17 +518,14 @@ if code in st.session_state.data_cache:
             quality = max(quality - 10, 0)
 
         # =========================================
-        # DRAW DETECTOR
-        # =========================================
-
-        draw_risk = abs(home_xg - away_xg)
-
-        # =========================================
         # VALUE EDGE
         # =========================================
 
         edge = round(
-            (prob_o25 - (1 / market_odds)) * 100,
+            (
+                prob_o25 -
+                (1 / market_odds)
+            ) * 100,
             1
         )
 
@@ -449,32 +533,65 @@ if code in st.session_state.data_cache:
         # FINAL BET ENGINE
         # =========================================
 
-        if draw_risk < 0.25 and total_xg < 2.5:
+        draw_risk = abs(home_xg - away_xg)
 
-            final_bet = "🤝 FINAL AI BET: DRAW / UNDER"
+        if score < 3 or quality < 55:
+            fb = "⛔ FINAL AI BET: SKIP MATCH"
 
-        elif score >= 7 and edge > 5:
+        elif draw_risk < 0.22 and total_xg < 2.4:
+            fb = "🤝 FINAL AI BET: DRAW / UNDER 2.5"
 
-            final_bet = "🔥 FINAL AI BET: OVER 2.5"
+        elif edge < 1:
+            fb = "⛔ FINAL AI BET: NO VALUE"
+
+        elif score >= 7 and quality >= 75 and edge > 5:
+            fb = "🔥 FINAL AI BET: OVER 2.5"
 
         elif score >= 5 and prob_o25 >= 0.65:
-
-            final_bet = "✅ FINAL AI BET: OVER 1.5"
+            fb = "✅ FINAL AI BET: OVER 1.5"
 
         elif prob_btts >= 0.62 and intensity >= 20:
-
-            final_bet = "⚽ FINAL AI BET: BTTS YES"
+            fb = "⚽ FINAL AI BET: BTTS YES"
 
         else:
-
-            final_bet = "⛔ FINAL AI BET: SKIP MATCH"
-
-        # NO VALUE FILTER
-        if edge < 1:
-            final_bet = "⛔ FINAL AI BET: NO VALUE"
+            fb = "⛔ FINAL AI BET: SKIP MATCH"
 
         # =========================================
-        # UI ANALYSIS
+        # VERDICT
+        # =========================================
+
+        if score >= 6 and quality >= 75:
+            verdict = "🔥 GREEN ELITE"
+            col = "#00ff66"
+
+        elif score >= 5 and quality >= 65:
+            verdict = "✅ GREEN SAFE"
+            col = "#90ee90"
+
+        elif score >= 3:
+            verdict = "⚖️ YELLOW RISK"
+            col = "#ffd700"
+
+        else:
+            verdict = "⛔ RED AVOID"
+            col = "#ff4d4d"
+
+        # =========================================
+        # CONFIDENCE
+        # =========================================
+
+        confidence = (
+            "HIGH"
+            if quality >= 75
+            else (
+                "MEDIUM"
+                if quality >= 60
+                else "LOW"
+            )
+        )
+
+        # =========================================
+        # UI
         # =========================================
 
         st.markdown(
@@ -482,11 +599,11 @@ if code in st.session_state.data_cache:
             unsafe_allow_html=True
         )
 
-        r1, r2, r3 = st.columns(3)
+        r1, r2, r3, r4 = st.columns(4)
 
         with r1:
 
-            goals_pick = (
+            g_pick = (
                 "🟢 OVER 2.5"
                 if prob_o25 > 0.70
                 else (
@@ -496,20 +613,17 @@ if code in st.session_state.data_cache:
                 )
             )
 
-            st.markdown(
-                f"""
-                <div class='card'>
-                <p class='small'>GOALS</p>
-                <div class='big-val'>{goals_pick}</div>
-                <p class='small'>{prob_o25*100:.1f}% Probability</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+            <div class='card'>
+            <p class='small'>GOALS</p>
+            <div class='big-val'>{g_pick}</div>
+            <p class='small'>{prob_o25*100:.1f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         with r2:
 
-            btts_pick = (
+            b_pick = (
                 "🟢 YES"
                 if prob_btts > 0.65
                 else (
@@ -519,35 +633,53 @@ if code in st.session_state.data_cache:
                 )
             )
 
-            st.markdown(
-                f"""
-                <div class='card'>
-                <p class='small'>BTTS</p>
-                <div class='big-val'>{btts_pick}</div>
-                <p class='small'>{prob_btts*100:.1f}% Probability</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+            <div class='card'>
+            <p class='small'>BTTS</p>
+            <div class='big-val'>{b_pick}</div>
+            <p class='small'>{prob_btts*100:.1f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         with r3:
 
-            corners_pick = (
+            t_corners = (
+                (
+                    h_data["HC"].mean()
+                    if "HC" in h_data.columns
+                    else 5
+                )
+                +
+                (
+                    a_data["AC"].mean()
+                    if "AC" in a_data.columns
+                    else 4
+                )
+            )
+
+            c_pick = (
                 "🟢 O9.5"
                 if t_corners > 10
                 else "🟡 O8.5"
             )
 
-            st.markdown(
-                f"""
-                <div class='card'>
-                <p class='small'>CORNERS</p>
-                <div class='big-val'>{corners_pick}</div>
-                <p class='small'>Avg: {t_corners:.1f}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+            <div class='card'>
+            <p class='small'>CORNERS</p>
+            <div class='big-val'>{c_pick}</div>
+            <p class='small'>{t_corners:.1f}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with r4:
+
+            st.markdown(f"""
+            <div class='card'>
+            <p class='small'>CONFIDENCE</p>
+            <div class='big-val'>{confidence}</div>
+            <p class='small'>{quality}/100</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         # =========================================
         # FINAL VERDICT
@@ -558,78 +690,104 @@ if code in st.session_state.data_cache:
             unsafe_allow_html=True
         )
 
-        if score >= 6 and quality >= 75:
+        st.markdown(f"""
+        <div class='signal-box'
+        style='border:3px solid {col};color:{col};'>
 
-            col = "#00ff66"
-            txt = "🔥 GREEN ELITE"
+        {verdict}
 
-        elif score >= 5 and quality >= 65:
+        <br>
 
-            col = "#90ee90"
-            txt = "✅ GREEN SAFE"
+        <span style='font-size:18px;color:#8b949e;'>
+        Battle Score: {score}/9
+        </span>
 
-        elif score >= 3:
+        </div>
+        """, unsafe_allow_html=True)
 
-            col = "#ffd700"
-            txt = "⚖️ YELLOW RISK"
+        st.success(fb)
+
+        # =========================================
+        # SIDE PICK
+        # =========================================
+
+        if home_xg > away_xg + 0.4:
+            side = "🏠 HOME 1X"
+
+        elif away_xg > home_xg + 0.4:
+            side = "🚀 AWAY X2"
 
         else:
-
-            col = "#ff4d4d"
-            txt = "⛔ RED AVOID"
-
-        st.markdown(
-            f"""
-            <div class='signal-box'
-            style='border:3px solid {col};color:{col};'>
-            {txt}
-            <br>
-            <span style='font-size:18px;color:#8b949e;'>
-            Battle Score: {score}/9
-            </span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        st.success(final_bet)
+            side = "🤝 DRAW / TIGHT"
 
         # =========================================
-        # FINANCIALS
+        # KELLY
         # =========================================
 
-        side_pick = (
-            "🏠 HOME 1X"
-            if home_xg > away_xg + 0.4
-            else (
-                "🚀 AWAY X2"
-                if away_xg > home_xg + 0.4
-                else "🤝 DRAW / TIGHT"
+        kelly = 0
+
+        if edge > 0 and market_odds > 1:
+
+            kelly = (
+                (
+                    (prob_o25 * market_odds) - 1
+                )
+                /
+                (market_odds - 1)
             )
-        )
-
-        kelly = (
-            (((prob_o25 * market_odds) - 1) / (market_odds - 1))
-            if market_odds > 1
-            else 0
-        )
 
         safe_k = min(max(0, kelly * 100 / 5), 10)
 
-        st.info(
-            f"""
-🏆 SIDE: {side_pick}
+        # =========================================
+        # INFO BOX
+        # =========================================
+
+        st.info(f"""
+🏆 SIDE: {side}
+
 ⭐ QUALITY: {quality}/100
+
 📈 EDGE: {edge}%
-"""
-        )
+
+🎯 SHOTS ON TARGET: {sot:.1f}
+""")
 
         st.warning(
             f"💰 RECOMMENDED STAKE: {safe_k:.1f}% of Bankroll"
         )
 
         # =========================================
-        # H2H HISTORY
+        # SAVE PREDICTION
+        # =========================================
+
+        st.session_state.prediction_history.append({
+            "time": datetime.now().strftime("%H:%M"),
+            "match": f"{home} vs {away}",
+            "verdict": verdict,
+            "bet": fb,
+            "quality": quality
+        })
+
+        # =========================================
+        # PREDICTION HISTORY
+        # =========================================
+
+        st.markdown(
+            "<div class='section-title'>📁 PREDICTION HISTORY</div>",
+            unsafe_allow_html=True
+        )
+
+        hist_df = pd.DataFrame(
+            st.session_state.prediction_history
+        )
+
+        st.dataframe(
+            hist_df.tail(10),
+            use_container_width=True
+        )
+
+        # =========================================
+        # H2H
         # =========================================
 
         st.markdown(
@@ -637,42 +795,24 @@ if code in st.session_state.data_cache:
             unsafe_allow_html=True
         )
 
-        h2h = df[
-            (
-                (df["HomeTeam"] == home)
-                &
-                (df["AwayTeam"] == away)
-            )
-            |
-            (
-                (df["HomeTeam"] == away)
-                &
-                (df["AwayTeam"] == home)
-            )
-        ].tail(5)
-
         if not h2h.empty:
 
             for _, r in h2h.iterrows():
 
-                st.markdown(
-                    f"""
-                    <div class='h2h-box'>
-                    <span>{r['HomeTeam']}</span>
-                    <b style='color:#ffd700;'>
-                    {r['FTHG']} - {r['FTAG']}
-                    </b>
-                    <span>{r['AwayTeam']}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""
+                <div class='h2h-box'>
+                <span>{r['HomeTeam']}</span>
+                <b style='color:#ffd700;'>
+                {r['FTHG']} - {r['FTAG']}
+                </b>
+                <span>{r['AwayTeam']}</span>
+                </div>
+                """, unsafe_allow_html=True)
 
         else:
             st.write("No recent H2H records found.")
 
 else:
-
     st.warning(
         "⚠️ Database empty. Click REFRESH DATABASE."
     )
