@@ -6,7 +6,7 @@ from io import StringIO
 from math import exp, factorial
 
 # =========================================
-# BIST WAPAMBANAJI AI - ELITE 2026 v9.0 PRO
+# BIST WAPAMBANAJI AI - ELITE 2026 v9.5 PRO
 # =========================================
 
 st.set_page_config(
@@ -67,6 +67,32 @@ def load_league_data(code):
         except: continue
     return None
 
+@st.cache_data(ttl=3600)
+def load_world_cup_data_api():
+    """Inavuta mechi zilizomalizika za World Cup kutoka API kama mbadala wa CSV"""
+    try:
+        # Tunavuta mechi zilizopita ili kupata magoli
+        url = "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED"
+        r = requests.get(url, headers=HEADERS, timeout=10)
+        data = r.json()
+        
+        parsed_matches = []
+        if "matches" in data:
+            for match in data["matches"]:
+                # Hakikisha matokeo yapo kabla ya kusoma magoli
+                if match.get("score") and match["score"].get("fullTime"):
+                    parsed_matches.append({
+                        "HomeTeam": match["homeTeam"]["name"],
+                        "AwayTeam": match["awayTeam"]["name"],
+                        "FTHG": match["score"]["fullTime"]["home"],
+                        "FTAG": match["score"]["fullTime"]["away"],
+                        "HS": 12,  # API ya bure haina mashuti, tunaweka default average
+                        "AS": 10   # default average
+                    })
+        return pd.DataFrame(parsed_matches)
+    except Exception as e:
+        return None
+
 def test_api_connection():
     try:
         url = "https://api.football-data.org/v4/competitions/PL"
@@ -80,13 +106,13 @@ def get_standings(league_api_code):
         url = f"https://api.football-data.org/v4/competitions/{league_api_code}/standings"
         r = requests.get(url, headers=HEADERS, timeout=10)
         data = r.json()
-        if "standings" in data:
+        if "standings" in data and len(data["standings"]) > 0:
             return data["standings"][0]["table"]
         return []
     except: return []
 
 # =========================================
-# LEAGUE MAP
+# LEAGUE MAP (Imeongezwa International / World Cup)
 # =========================================
 
 LEAGUE_MAP = {
@@ -105,6 +131,9 @@ LEAGUE_MAP = {
     },
     "FRANCE": {
         "Ligue 1": {"csv": "F1", "api": "FL1"}
+    },
+    "INTERNATIONAL": {
+        "World Cup": {"csv": "WC", "api": "WC"}
     }
 }
 
@@ -113,9 +142,8 @@ LEAGUE_MAP = {
 # =========================================
 
 st.markdown("<h1 style='text-align:center;color:#ffd700;'>BIST WAPAMBANAJI AI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;color:#8b949e;'>ELITE FOOTBALL AI ENGINE v9.0 PRO</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#8b949e;'>ELITE FOOTBALL AI ENGINE v9.5 PRO</p>", unsafe_allow_html=True)
 
-# HAPA NDIPO TUNAPOTEST API KILA APP IKIFUNGULIWA
 if test_api_connection():
     st.success("✅ FOOTBALL-DATA API CONNECTED")
 else:
@@ -143,9 +171,11 @@ with st.sidebar:
     live_table = get_standings(api_code)
     if live_table:
         for team in live_table[:10]:
-            st.write(f"{team['position']}. {team['team']['shortName']} ({team['points']} pts)")
+            # Kushughulikia kama muundo wa World Cup unatofautiana (wakati mwingine hautumii shortName)
+            t_name = team['team'].get('shortName') or team['team'].get('name', 'Unknown')
+            st.write(f"{team['position']}. {t_name} ({team.get('points', 0)} pts)")
     else:
-        st.warning("Msimamo haupatikani kwa sasa.")
+        st.warning("Msimamo haupatikani (Au hatua ya makundi haijaanza).")
 
     st.markdown("---")
     st.markdown("## 💰 BANKROLL PROTECTOR")
@@ -160,9 +190,16 @@ if today_loss >= daily_limit:
 # MAIN ANALYSIS ENGINE
 # =========================================
 
-df = load_league_data(csv_code)
+# ROUTING LOGIC: World Cup inasoma API, zingine zinasoma CSV
+if csv_code == "WC":
+    df = load_world_cup_data_api()
+    if df is None or df.empty:
+        st.error("❌ HAKUNA DATA ZA WORLD CUP ZILIZOPATIKANA KUTOKA API.")
+        st.info("💡 Angalia kama Free Tier ya API yako inaruhusu mashindano ya WC.")
+else:
+    df = load_league_data(csv_code)
 
-if df is not None:
+if df is not None and not df.empty:
     teams = sorted(df["HomeTeam"].dropna().unique())
     s1, s2, s3 = st.columns([2,2,1])
     
@@ -171,19 +208,26 @@ if df is not None:
     with s3: market_odds = st.number_input("💰 O2.5 ODDS", min_value=1.10, value=1.85, step=0.01)
 
     if st.button("🎯 RUN AI ANALYSIS"):
-        h_data = df[df["HomeTeam"] == home].tail(8)
-        a_data = df[df["AwayTeam"] == away].tail(8)
+        # Kuchuja data za timu husika
+        h_data = df[(df["HomeTeam"] == home) | (df["AwayTeam"] == home)].tail(8)
+        a_data = df[(df["HomeTeam"] == away) | (df["AwayTeam"] == away)].tail(8)
 
-        if len(h_data) < 5 or len(a_data) < 5:
-            st.error("⚠️ Data haitoshi kufanya uchambuzi.")
+        # Kwa michuano ya mataifa (WC), data zinaweza kuwa chache, tunashusha kiwango hadi mechi 3
+        min_matches = 3 if csv_code == "WC" else 5
+
+        if len(h_data) < min_matches or len(a_data) < min_matches:
+            st.error(f"⚠️ Data haitoshi kufanya uchambuzi. Inahitajika angalau mechi {min_matches} kwa kila timu.")
             st.stop()
 
-        # Math Calculations
-        w = np.arange(1, len(h_data)+1)
-        h_sc = np.average(h_data["FTHG"], weights=w)
-        h_con = np.average(h_data["FTAG"], weights=w)
-        a_sc = np.average(a_data["FTAG"], weights=w)
-        a_con = np.average(a_data["FTHG"], weights=w)
+        # Math Calculations (Hapa tunahesabu kulingana na mechi zilizopo)
+        w_h = np.arange(1, len(h_data)+1)
+        w_a = np.arange(1, len(a_data)+1)
+        
+        # Kupata magoli ya kufunga/kufungwa nyumbani na ugenini
+        h_sc = np.average(h_data["FTHG"], weights=w_h)
+        h_con = np.average(h_data["FTAG"], weights=w_h)
+        a_sc = np.average(a_data["FTAG"], weights=w_a)
+        a_con = np.average(a_data["FTHG"], weights=w_a)
 
         home_xg, away_xg = (h_sc + a_con) / 2, (a_sc + h_con) / 2
         total_xg = home_xg + away_xg
@@ -196,8 +240,8 @@ if df is not None:
         prob_o25, prob_btts = (1 - prob_u25), ((1 - poisson(home_xg, 0)) * (1 - poisson(away_xg, 0)))
 
         # Intensity & Volatility
-        h_shots = h_data["HS"].mean() if "HS" in h_data.columns else 10
-        a_shots = a_data["AS"].mean() if "AS" in a_data.columns else 8
+        h_shots = h_data["HS"].mean() if "HS" in h_data.columns else 12
+        a_shots = a_data["AS"].mean() if "AS" in a_data.columns else 10
         intensity = h_shots + a_shots
         volatility = (np.std(h_data["FTHG"]) + np.std(a_data["FTAG"])) / 2
 
@@ -235,4 +279,4 @@ if df is not None:
         st.info(f"📈 EDGE: {edge}%")
 
 else:
-    st.error("❌ FAILED TO LOAD CSV DATA")
+    st.error("❌ SHINDWA KUPAKIA DATA ZA LIGI AU MICHUANO HII.")
